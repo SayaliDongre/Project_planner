@@ -8,9 +8,13 @@
     <!-- Canvas Confetti for rewards -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 </head>
 <body>
+    <div id="stars"></div>
+    <div id="stars2"></div>
+    <div id="stars3"></div>
+
     <div class="app-container">
         <!-- Top Bar: Player Stats & Settings -->
         <header class="glass-panel player-dashboard">
@@ -19,7 +23,7 @@
                     <img id="player-avatar" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/25.gif" alt="Avatar">
                 </div>
                 <div class="stats">
-                    <h1 id="player-title">Level <span id="player-level">1</span>: <span id="player-rank">Novice</span></h1>
+                    <h1 id="player-title">Lv. <span id="player-level">1</span> <span id="player-rank">Novice</span></h1>
                     <div class="xp-bar-container">
                         <div id="xp-bar" class="xp-bar" style="width: 0%;"></div>
                     </div>
@@ -28,48 +32,57 @@
             </div>
             
             <div class="project-progress">
-                <h2>Overall Quest Progress</h2>
+                <h2>Master Quest Progress</h2>
                 <div class="progress-bar-bg">
                     <div id="overall-progress-bar" class="progress-bar-fill"></div>
                 </div>
-                <p id="overall-progress-text">0% Complete</p>
+                <p id="overall-progress-text" class="glow-text">0% Complete</p>
             </div>
 
             <div class="actions">
-                <button id="btn-export" class="btn btn-secondary">💾 Backup JSON</button>
-                <label for="file-import" class="btn btn-secondary">📂 Load JSON</label>
+                <button id="btn-export" class="btn btn-secondary">💾 Backup</button>
+                <label for="file-import" class="btn btn-secondary">📂 Load</label>
                 <input type="file" id="file-import" accept=".json" style="display: none;">
-                <button id="btn-new-quest" class="btn btn-primary">➕ New Quest</button>
+                <button id="btn-new-quest" class="btn btn-primary glow-btn">➕ New Quest</button>
             </div>
         </header>
 
         <!-- Main Content: Quest Board -->
         <main class="quest-board">
             <div class="quest-column" id="col-active">
-                <h2 class="column-title">Active Quests</h2>
+                <h2 class="column-title">🔥 Active Quests</h2>
                 <div class="quest-list" id="active-quests">
                     <!-- Tasks will be injected here -->
+                </div>
+            </div>
+
+            <div class="quest-column" id="col-completed">
+                <h2 class="column-title">🏆 Hall of Fame</h2>
+                <div class="quest-list" id="completed-quests">
+                    <!-- Completed Tasks will be injected here -->
                 </div>
             </div>
         </main>
     </div>
 
-    <!-- New Quest Modal -->
+    <!-- New/Edit Quest Modal -->
     <div id="quest-modal" class="modal hidden">
         <div class="modal-content glass-panel">
-            <h2>Create New Quest</h2>
-            <form id="new-quest-form">
+            <h2 id="modal-title">Create New Quest</h2>
+            <form id="quest-form">
+                <input type="hidden" id="q-id">
                 <div class="form-group">
                     <label>Quest Title</label>
                     <input type="text" id="q-title" required placeholder="e.g. Defeat the Database Dragon">
                 </div>
                 <div class="form-group">
-                    <label>Severity (Difficulty)</label>
+                    <label>Difficulty (Rank)</label>
                     <select id="q-severity">
-                        <option value="1">Low (Slime)</option>
-                        <option value="2">Medium (Goblin)</option>
-                        <option value="3">High (Orc)</option>
-                        <option value="5">Critical (Boss Fight)</option>
+                        <option value="1">Rank D (Easy)</option>
+                        <option value="2">Rank C (Medium)</option>
+                        <option value="3">Rank B (Hard)</option>
+                        <option value="4">Rank A (Epic)</option>
+                        <option value="5">Rank S (Legendary)</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -79,10 +92,11 @@
                 <div class="form-group">
                     <label>Sub-tasks (Comma separated)</label>
                     <textarea id="q-subtasks" placeholder="e.g. Setup repo, Write API, Test"></textarea>
+                    <small class="form-hint">Editing these will preserve progress of matching subtasks.</small>
                 </div>
                 <div class="form-actions">
                     <button type="button" class="btn btn-secondary" id="btn-cancel-modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Accept Quest</button>
+                    <button type="submit" class="btn btn-primary" id="btn-save-modal">Accept Quest</button>
                 </div>
             </form>
         </div>
