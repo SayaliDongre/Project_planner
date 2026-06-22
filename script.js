@@ -420,25 +420,20 @@ function renderTaskCard(task, projectId) {
     const hasExpand = task.description || task.subtasks.length;
     const isOpen = expandedTasks.has(task.id) ? 'open' : '';
 
-    // Move buttons
-    const moves = [];
-    if (task.status !== 'todo') moves.push(`<button class="task-action-btn move-btn" onclick="window._moveTask('${projectId}','${task.id}','todo')">← Todo</button>`);
-    if (task.status !== 'in-progress') moves.push(`<button class="task-action-btn move-btn" onclick="window._moveTask('${projectId}','${task.id}','in-progress')">🔄 Progress</button>`);
-    if (task.status !== 'done') moves.push(`<button class="task-action-btn move-btn" onclick="window._moveTask('${projectId}','${task.id}','done')">✓ Done</button>`);
-
     return `<div class="task-card priority-${task.priority}" draggable="true" data-task-id="${task.id}" data-project-id="${projectId}">
         <div class="task-card-title" ${hasExpand ? `style="cursor:pointer" onclick="window._toggleTaskExpand('${task.id}', this)"` : ''}>${esc(task.title)}</div>
         <div class="task-card-meta">
-            <span class="task-badge">P${task.priority}</span>
-            ${deadlineBadge}
+            <div class="task-badges">
+                <span class="task-badge">P${task.priority}</span>
+                ${deadlineBadge}
+            </div>
+            <div class="task-actions-compact">
+                <button class="task-action-btn-icon" onclick="window._editTask('${projectId}','${task.id}')" title="Edit">✏️</button>
+                <button class="task-action-btn-icon delete-btn" onclick="window._deleteTask('${projectId}','${task.id}')" title="Delete">🗑️</button>
+            </div>
         </div>
         ${stBar}
         ${hasExpand ? `<div class="task-expand ${isOpen}">${descHtml}${subtasksHtml}</div>` : ''}
-        <div class="task-card-actions">
-            ${moves.join('')}
-            <button class="task-action-btn" onclick="window._editTask('${projectId}','${task.id}')">✏️</button>
-            <button class="task-action-btn delete-btn" onclick="window._deleteTask('${projectId}','${task.id}')">🗑️</button>
-        </div>
     </div>`;
 }
 

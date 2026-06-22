@@ -521,7 +521,21 @@ h1,h2,h3,h4 { font-family: var(--font-heading); letter-spacing: 0.5px; }
 .task-card.priority-5::before { background: var(--danger); }
 
 .task-card-title { font-size: 13px; font-weight: 600; margin-bottom: 6px; line-height: 1.3; }
-.task-card-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.task-card-meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; flex-wrap: wrap; }
+.task-badges { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.task-actions-compact { display: flex; align-items: center; gap: 4px; }
+.task-action-btn-icon {
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all var(--transition);
+    padding: 2px 4px;
+    border-radius: 4px;
+}
+.task-action-btn-icon:hover { color: var(--text-main); background: rgba(255,255,255,0.08); }
+.task-action-btn-icon.delete-btn:hover { color: var(--danger); background: rgba(239,68,68,0.15); }
 .task-badge {
     font-size: 10px;
     padding: 2px 7px;
@@ -549,27 +563,7 @@ h1,h2,h3,h4 { font-family: var(--font-heading); letter-spacing: 0.5px; }
 .subtask-mini-fill { height: 100%; background: var(--primary); border-radius: 2px; transition: width 0.3s ease; }
 .subtask-mini-text { font-size: 10px; color: var(--text-dim); font-family: var(--font-heading); white-space: nowrap; }
 
-.task-card-actions {
-    display: flex;
-    gap: 4px;
-    margin-top: 8px;
-    padding-top: 8px;
-    border-top: 1px solid rgba(255,255,255,0.03);
-}
-.task-action-btn {
-    background: rgba(255,255,255,0.04);
-    border: 1px solid rgba(255,255,255,0.06);
-    color: var(--text-dim);
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 11px;
-    cursor: pointer;
-    transition: all var(--transition);
-    font-family: var(--font-body);
-}
-.task-action-btn:hover { background: rgba(255,255,255,0.1); color: var(--text-main); }
-.task-action-btn.move-btn:hover { color: var(--primary); border-color: rgba(139,92,246,0.3); }
-.task-action-btn.delete-btn:hover { color: var(--danger); border-color: rgba(239,68,68,0.3); }
+
 
 /* Expanded task detail (subtasks) */
 .task-expand {
