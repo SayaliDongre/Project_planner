@@ -3,108 +3,235 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quest Log - Gamified Planner</title>
+    <title>Quest Planner — Pokémon Project Tracker</title>
+    <meta name="description" content="A gamified project planner with Pokémon theme. Track projects, tasks, and progress with XP and Pokédex collection.">
     <link rel="stylesheet" href="style.css">
-    <!-- Canvas Confetti for rewards -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
     <div id="stars"></div>
     <div id="stars2"></div>
     <div id="stars3"></div>
 
-    <div class="app-container">
-        <!-- Top Bar: Player Stats & Settings -->
-        <header class="glass-panel player-dashboard">
-            <div class="player-info">
-                <div class="avatar-container">
-                    <img id="player-avatar" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/25.gif" alt="Avatar">
+    <div class="app-wrapper">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <span class="logo-icon">⚡</span>
+                <span class="logo-text">Quest Log</span>
+            </div>
+            <nav class="sidebar-nav">
+                <button class="nav-item active" data-view="dashboard" id="nav-dashboard">
+                    <span class="nav-icon">📊</span> Dashboard
+                </button>
+                <button class="nav-item" data-view="pokedex" id="nav-pokedex">
+                    <span class="nav-icon">🎴</span> Pokédex <span class="pokedex-count" id="pokedex-count">0</span>
+                </button>
+                <button class="nav-item" data-view="archived" id="nav-archived">
+                    <span class="nav-icon">📦</span> Archived
+                </button>
+            </nav>
+            <div class="sidebar-projects">
+                <div class="sidebar-section-header">
+                    <h3>Projects</h3>
+                    <button class="btn-add-project" id="btn-new-project" title="New Project">+</button>
                 </div>
-                <div class="stats">
-                    <h1 id="player-title">Lv. <span id="player-level">1</span> <span id="player-rank">Novice</span></h1>
-                    <div class="xp-bar-container">
-                        <div id="xp-bar" class="xp-bar" style="width: 0%;"></div>
+                <div id="project-list" class="project-list"></div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Top Bar -->
+            <header class="top-bar glass-panel">
+                <button class="hamburger" id="sidebar-toggle">☰</button>
+                <div class="player-stats">
+                    <div class="avatar-container">
+                        <img id="player-avatar" src="" alt="Avatar">
                     </div>
-                    <p class="xp-text"><span id="current-xp">0</span> / <span id="next-level-xp">100</span> XP</p>
+                    <div class="player-level-info">
+                        <div class="player-title">Lv.<span id="player-level">1</span> <span id="player-rank">Novice</span></div>
+                        <div class="xp-bar-container">
+                            <div id="xp-bar" class="xp-bar"></div>
+                        </div>
+                        <div class="xp-text"><span id="current-xp">0</span> / <span id="next-level-xp">115</span> XP</div>
+                    </div>
                 </div>
-            </div>
-            
-            <div class="project-progress">
-                <h2>Master Quest Progress</h2>
-                <div class="progress-bar-bg">
-                    <div id="overall-progress-bar" class="progress-bar-fill"></div>
+                <div class="overall-progress-mini">
+                    <svg class="progress-ring" viewBox="0 0 40 40">
+                        <circle cx="20" cy="20" r="16" class="ring-bg"/>
+                        <circle cx="20" cy="20" r="16" class="ring-fill" id="overall-ring"/>
+                    </svg>
+                    <span id="overall-pct">0%</span>
                 </div>
-                <p id="overall-progress-text" class="glow-text">0% Complete</p>
-            </div>
+                <div class="top-bar-actions">
+                    <button class="btn btn-sm btn-secondary" id="btn-export">💾 Backup</button>
+                    <label class="btn btn-sm btn-secondary" for="file-import">📂 Load</label>
+                    <input type="file" id="file-import" accept=".json" style="display:none">
+                </div>
+            </header>
 
-            <div class="actions">
-                <button id="btn-export" class="btn btn-secondary">💾 Backup</button>
-                <label for="file-import" class="btn btn-secondary">📂 Load</label>
-                <input type="file" id="file-import" accept=".json" style="display: none;">
-                <button id="btn-new-quest" class="btn btn-primary glow-btn">➕ New Quest</button>
-            </div>
-        </header>
+            <!-- Views -->
+            <div class="content-area">
+                <!-- Dashboard View -->
+                <section id="view-dashboard" class="view active">
+                    <h2 class="view-title">Dashboard</h2>
+                    <div class="stats-grid" id="stats-grid"></div>
+                    <h3 class="section-title">Project Progress</h3>
+                    <div class="projects-overview" id="projects-overview"></div>
+                </section>
 
-        <!-- Main Content: Quest Board -->
-        <main class="quest-board">
-            <div class="quest-column" id="col-active">
-                <h2 class="column-title">🔥 Active Quests</h2>
-                <div class="quest-list" id="active-quests">
-                    <!-- Tasks will be injected here -->
-                </div>
-            </div>
+                <!-- Project Detail View -->
+                <section id="view-project" class="view">
+                    <div class="project-header">
+                        <div class="project-header-left">
+                            <button class="btn-back" id="btn-back-dash">← Back</button>
+                            <img id="project-pokemon-icon" class="project-icon" src="" alt="">
+                            <h2 id="project-name">Project</h2>
+                        </div>
+                        <div class="project-header-actions">
+                            <button class="btn btn-sm btn-secondary" id="btn-edit-project">✏️ Edit</button>
+                            <button class="btn btn-sm btn-secondary" id="btn-archive-project">📦 Archive</button>
+                            <button class="btn btn-sm btn-danger" id="btn-delete-project">🗑️</button>
+                        </div>
+                    </div>
+                    <div class="search-filter-bar">
+                        <input type="text" id="task-search" class="search-input" placeholder="Search tasks...">
+                        <div class="filter-btns">
+                            <button class="filter-btn active" data-filter="all">All</button>
+                            <button class="filter-btn" data-filter="todo">To Do</button>
+                            <button class="filter-btn" data-filter="in-progress">In Progress</button>
+                            <button class="filter-btn" data-filter="done">Done</button>
+                        </div>
+                    </div>
+                    <div class="kanban-board" id="kanban-board">
+                        <div class="kanban-column" data-status="todo">
+                            <div class="column-header"><span class="col-dot todo"></span><h3>To Do</h3><span class="col-count" id="count-todo">0</span></div>
+                            <div class="task-list" id="tasks-todo"></div>
+                        </div>
+                        <div class="kanban-column" data-status="in-progress">
+                            <div class="column-header"><span class="col-dot progress"></span><h3>In Progress</h3><span class="col-count" id="count-progress">0</span></div>
+                            <div class="task-list" id="tasks-progress"></div>
+                        </div>
+                        <div class="kanban-column" data-status="done">
+                            <div class="column-header"><span class="col-dot done"></span><h3>Done</h3><span class="col-count" id="count-done">0</span></div>
+                            <div class="task-list" id="tasks-done"></div>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary glow-btn fab" id="btn-new-task">+ New Task</button>
+                </section>
 
-            <div class="quest-column" id="col-completed">
-                <h2 class="column-title">🏆 Hall of Fame</h2>
-                <div class="quest-list" id="completed-quests">
-                    <!-- Completed Tasks will be injected here -->
-                </div>
+                <!-- Pokédex View -->
+                <section id="view-pokedex" class="view">
+                    <h2 class="view-title">Pokédex — Your Collection</h2>
+                    <p class="view-subtitle" id="pokedex-subtitle">Complete tasks to catch Pokémon!</p>
+                    <div class="pokedex-grid" id="pokedex-grid"></div>
+                </section>
+
+                <!-- Archived View -->
+                <section id="view-archived" class="view">
+                    <h2 class="view-title">Archived Projects</h2>
+                    <div id="archived-list" class="archived-list"></div>
+                </section>
             </div>
-        </main>
+        </div>
     </div>
 
-    <!-- New/Edit Quest Modal -->
-    <div id="quest-modal" class="modal hidden">
+    <!-- Project Modal -->
+    <div id="project-modal" class="modal hidden">
         <div class="modal-content glass-panel">
-            <h2 id="modal-title">Create New Quest</h2>
-            <form id="quest-form">
-                <input type="hidden" id="q-id">
+            <h2 id="project-modal-title">New Project</h2>
+            <form id="project-form">
+                <input type="hidden" id="p-id">
                 <div class="form-group">
-                    <label>Quest Title</label>
-                    <input type="text" id="q-title" required placeholder="e.g. Defeat the Database Dragon">
+                    <label>Project Name</label>
+                    <input type="text" id="p-name" required placeholder="e.g. Website Redesign">
                 </div>
                 <div class="form-group">
-                    <label>Difficulty (Rank)</label>
-                    <select id="q-severity">
-                        <option value="1">Rank D (Easy)</option>
-                        <option value="2">Rank C (Medium)</option>
-                        <option value="3">Rank B (Hard)</option>
-                        <option value="4">Rank A (Epic)</option>
-                        <option value="5">Rank S (Legendary)</option>
-                    </select>
+                    <label>Description</label>
+                    <textarea id="p-desc" placeholder="Brief project description..." rows="2"></textarea>
                 </div>
                 <div class="form-group">
-                    <label>Deadline (Optional)</label>
-                    <input type="datetime-local" id="q-deadline">
-                </div>
-                <div class="form-group">
-                    <label>Sub-tasks (Comma separated)</label>
-                    <textarea id="q-subtasks" placeholder="e.g. Setup repo, Write API, Test"></textarea>
-                    <small class="form-hint">Editing these will preserve progress of matching subtasks.</small>
+                    <label>Accent Color</label>
+                    <div class="color-picker" id="color-picker"></div>
                 </div>
                 <div class="form-actions">
-                    <button type="button" class="btn btn-secondary" id="btn-cancel-modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary" id="btn-save-modal">Accept Quest</button>
+                    <button type="button" class="btn btn-secondary" id="btn-cancel-project">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Project</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Notification system -->
-    <div id="notification-container"></div>
+    <!-- Task Modal -->
+    <div id="task-modal" class="modal hidden">
+        <div class="modal-content glass-panel">
+            <h2 id="task-modal-title">New Task</h2>
+            <form id="task-form">
+                <input type="hidden" id="t-id">
+                <div class="form-group">
+                    <label>Task Title</label>
+                    <input type="text" id="t-title" required placeholder="e.g. Design homepage mockup">
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea id="t-desc" placeholder="Details..." rows="2"></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Priority</label>
+                        <select id="t-priority">
+                            <option value="1">Low</option>
+                            <option value="2">Medium</option>
+                            <option value="3" selected>Normal</option>
+                            <option value="4">High</option>
+                            <option value="5">Critical</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Deadline</label>
+                        <input type="date" id="t-deadline">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Subtasks <small>(one per line)</small></label>
+                    <textarea id="t-subtasks" placeholder="Setup repo&#10;Write API&#10;Test" rows="3"></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" id="btn-cancel-task">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Task</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
+    <!-- Sad Alert Modal -->
+    <div id="sad-alert-modal" class="modal hidden">
+        <div class="modal-content glass-panel" style="text-align: center; max-width: 350px;">
+            <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/104.gif" style="height: 80px; image-rendering: pixelated; margin-bottom: 15px;" alt="Crying Pokemon">
+            <h2 style="color: var(--danger)">Wait a minute!</h2>
+            <p style="margin-bottom: 20px; color: var(--text-muted); font-size: 13px;">Reverting this will cost you <strong id="sad-alert-xp" style="color: var(--danger)"></strong> XP. Are you sure you want to go backwards?</p>
+            <div class="form-actions" style="justify-content: center;">
+                <button class="btn btn-secondary" id="btn-cancel-revert">Cancel</button>
+                <button class="btn btn-danger" id="btn-confirm-revert">Revert Progress</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pokémon Detail Popup -->
+    <div id="pokemon-detail-modal" class="modal hidden">
+        <div class="modal-content glass-panel pokemon-detail">
+            <button class="modal-close" id="btn-close-pokemon">✕</button>
+            <img id="pd-sprite" class="pd-sprite" src="" alt="">
+            <h3 id="pd-name"></h3>
+            <p class="pd-task-label">Caught by completing:</p>
+            <p id="pd-task" class="pd-task"></p>
+            <p id="pd-date" class="pd-date"></p>
+        </div>
+    </div>
+
+    <div id="notification-container"></div>
     <script src="script.js"></script>
 </body>
 </html>

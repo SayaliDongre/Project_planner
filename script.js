@@ -1,535 +1,966 @@
-// Game Logic and Data Management
+// ========== DATA & CONSTANTS ==========
 
-const GAME_STATE_KEY = 'quest_planner_data_v2';
+const STORE_KEY = 'quest_planner_v3';
+const OLD_KEY_V2 = 'quest_planner_data_v2';
+const OLD_KEY_V1 = 'quest_planner_data';
 
-const DEFAULT_STATE = {
-    player: {
-        xp: 0,
-        level: 1,
-        lastBackup: Date.now()
-    },
-    quests: []
-};
+const PROJECT_COLORS = ['#8b5cf6','#3b82f6','#10b981','#f59e0b','#ef4444','#ec4899','#06b6d4','#f97316','#84cc16','#6366f1'];
 
-// Pokemon GIFs
-const subtaskPokemons = [
-    25, // Pikachu
-    4,  // Charmander
-    7,  // Squirtle
-    1,  // Bulbasaur
-    133, // Eevee
-    39, // Jigglypuff
-    52, // Meowth
-    54, // Psyduck
-    152, // Chikorita
-    155, // Cyndaquil
-    158  // Totodile
+const EVOLUTION_CHAINS = [
+    [4,5,6],[7,8,9],[1,2,3],[172,25,26],[133,196,197],
+    [92,93,94],[147,148,149],[246,247,248],[280,281,282],
+    [374,375,376],[443,444,445],[447,448,448]
 ];
-
-const MAIN_BOSS_POKEMON = 143; // Snorlax
+const LEGENDARIES = [150,384,493,249,250,383,382,483,484,487,151,243,244,245,377,378,379,380,381,385,386];
 
 const RANKS = [
-    'Novice', 'Apprentice', 'Squire', 'Adventurer', 'Mercenary', 
-    'Warrior', 'Knight', 'Veteran', 'Elite', 'Champion', 
-    'Hero', 'Master', 'Grandmaster', 'Legend', 'Mythic', 'Demigod', 'God'
+    'Novice','Apprentice','Squire','Adventurer','Scout',
+    'Warrior','Knight','Sentinel','Guardian','Veteran',
+    'Elite','Champion','Hero','Vanguard','Warden',
+    'Master','Sage','Oracle','Archon','Sovereign',
+    'Legend','Mythic','Titan','Celestial','Demigod',
+    'Ascendant','Eternal','Transcendent','Cosmic','Omega'
 ];
 
-let gameState = JSON.parse(localStorage.getItem(GAME_STATE_KEY));
+// Gen1-3 Pokemon pool for Pokédex (151 pokemon)
+const POKEMON_POOL = [
+    [1,'Bulbasaur'],[2,'Ivysaur'],[3,'Venusaur'],[4,'Charmander'],[5,'Charmeleon'],
+    [6,'Charizard'],[7,'Squirtle'],[8,'Wartortle'],[9,'Blastoise'],[10,'Caterpie'],
+    [11,'Metapod'],[12,'Butterfree'],[13,'Weedle'],[14,'Kakuna'],[15,'Beedrill'],
+    [16,'Pidgey'],[17,'Pidgeotto'],[18,'Pidgeot'],[19,'Rattata'],[20,'Raticate'],
+    [21,'Spearow'],[22,'Fearow'],[23,'Ekans'],[24,'Arbok'],[25,'Pikachu'],
+    [26,'Raichu'],[27,'Sandshrew'],[28,'Sandslash'],[29,'Nidoran♀'],[30,'Nidorina'],
+    [31,'Nidoqueen'],[32,'Nidoran♂'],[33,'Nidorino'],[34,'Nidoking'],[35,'Clefairy'],
+    [36,'Clefable'],[37,'Vulpix'],[38,'Ninetales'],[39,'Jigglypuff'],[40,'Wigglytuff'],
+    [41,'Zubat'],[42,'Golbat'],[43,'Oddish'],[44,'Gloom'],[45,'Vileplume'],
+    [46,'Paras'],[47,'Parasect'],[48,'Venonat'],[49,'Venomoth'],[50,'Diglett'],
+    [51,'Dugtrio'],[52,'Meowth'],[53,'Persian'],[54,'Psyduck'],[55,'Golduck'],
+    [56,'Mankey'],[57,'Primeape'],[58,'Growlithe'],[59,'Arcanine'],[60,'Poliwag'],
+    [61,'Poliwhirl'],[62,'Poliwrath'],[63,'Abra'],[64,'Kadabra'],[65,'Alakazam'],
+    [66,'Machop'],[67,'Machoke'],[68,'Machamp'],[69,'Bellsprout'],[70,'Weepinbell'],
+    [71,'Victreebel'],[72,'Tentacool'],[73,'Tentacruel'],[74,'Geodude'],[75,'Graveler'],
+    [76,'Golem'],[77,'Ponyta'],[78,'Rapidash'],[79,'Slowpoke'],[80,'Slowbro'],
+    [81,'Magnemite'],[82,'Magneton'],[83,'Farfetchd'],[84,'Doduo'],[85,'Dodrio'],
+    [86,'Seel'],[87,'Dewgong'],[88,'Grimer'],[89,'Muk'],[90,'Shellder'],
+    [91,'Cloyster'],[92,'Gastly'],[93,'Haunter'],[94,'Gengar'],[95,'Onix'],
+    [96,'Drowzee'],[97,'Hypno'],[98,'Krabby'],[99,'Kingler'],[100,'Voltorb'],
+    [101,'Electrode'],[102,'Exeggcute'],[103,'Exeggutor'],[104,'Cubone'],[105,'Marowak'],
+    [106,'Hitmonlee'],[107,'Hitmonchan'],[108,'Lickitung'],[109,'Koffing'],[110,'Weezing'],
+    [111,'Rhyhorn'],[112,'Rhydon'],[113,'Chansey'],[114,'Tangela'],[115,'Kangaskhan'],
+    [116,'Horsea'],[117,'Seadra'],[118,'Goldeen'],[119,'Seaking'],[120,'Staryu'],
+    [121,'Starmie'],[122,'Mr. Mime'],[123,'Scyther'],[124,'Jynx'],[125,'Electabuzz'],
+    [126,'Magmar'],[127,'Pinsir'],[128,'Tauros'],[129,'Magikarp'],[130,'Gyarados'],
+    [131,'Lapras'],[132,'Ditto'],[133,'Eevee'],[134,'Vaporeon'],[135,'Jolteon'],
+    [136,'Flareon'],[137,'Porygon'],[138,'Omanyte'],[139,'Omastar'],[140,'Kabuto'],
+    [141,'Kabutops'],[142,'Aerodactyl'],[143,'Snorlax'],[144,'Articuno'],[145,'Zapdos'],
+    [146,'Moltres'],[147,'Dratini'],[148,'Dragonair'],[149,'Dragonite'],[150,'Mewtwo'],
+    [151,'Mew']
+];
 
-// Migration or Init
-if (!gameState) {
-    // Try to migrate from v1
-    const oldState = JSON.parse(localStorage.getItem('quest_planner_data'));
-    if (oldState) {
-        gameState = oldState;
-        // Migrate subtasks to progress objects
-        gameState.quests.forEach(q => {
-            q.subtasks.forEach(st => {
-                if (st.progress === undefined) {
-                    st.progress = st.completed ? 100 : 0;
-                    st.rewardClaimed = st.completed;
-                }
-            });
-        });
-        localStorage.setItem(GAME_STATE_KEY, JSON.stringify(gameState));
-    } else {
-        gameState = DEFAULT_STATE;
-    }
+function spriteUrl(id) {
+    return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/${id}.gif`;
+}
+function spriteUrlStatic(id) {
+    return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`;
 }
 
-// Initialization
+function xpForLevel(level) { return Math.floor(100 * Math.pow(1.15, level)); }
+
+function getRank(level) {
+    if (level <= 30) return RANKS[level - 1];
+    if (level <= 40) return `Omega+${level}`;
+    if (level <= 50) return `Beta+${level}`;
+    return `Alpha+${level}`;
+}
+
+function getAvatarPokemon(level) {
+    if (level <= 36) {
+        const chainIdx = Math.floor((level - 1) / 3);
+        const stageIdx = (level - 1) % 3;
+        return EVOLUTION_CHAINS[chainIdx][stageIdx];
+    }
+    const legIdx = (level - 37) % LEGENDARIES.length;
+    return LEGENDARIES[legIdx];
+}
+
+function genId() { return Math.random().toString(36).substr(2, 9) + Date.now().toString(36).slice(-4); }
+
+// ========== STATE ==========
+
+const DEFAULT_STATE = {
+    player: { xp: 0, level: 1, lastBackup: Date.now() },
+    projects: [],
+    pokedex: [] // { pokemonIdx, taskTitle, date }
+};
+
+let state = loadState();
+let currentView = 'dashboard';
+let currentProjectId = null;
+let currentFilter = 'all';
+let searchQuery = '';
+let expandedTasks = new Set();
+let pendingRevert = null;
+
+function loadState() {
+    const saved = localStorage.getItem(STORE_KEY);
+    if (saved) return JSON.parse(saved);
+
+    // Migration from v2
+    const v2 = localStorage.getItem(OLD_KEY_V2) || localStorage.getItem(OLD_KEY_V1);
+    if (v2) {
+        const old = JSON.parse(v2);
+        if (old && old.quests) {
+            const migrated = JSON.parse(JSON.stringify(DEFAULT_STATE));
+            migrated.player = { ...migrated.player, ...old.player };
+            const proj = {
+                id: genId(), name: 'Legacy Quests', description: 'Migrated from previous version',
+                color: '#8b5cf6', pokemonId: 25, createdAt: Date.now(), status: 'active', tasks: []
+            };
+            old.quests.forEach(q => {
+                const subtasks = (q.subtasks || []).map(s => ({
+                    id: s.id || genId(), text: s.text, done: s.progress === 100 || s.completed || false
+                }));
+                proj.tasks.push({
+                    id: q.id || genId(), title: q.title, description: '',
+                    priority: q.severity || 3,
+                    status: q.completed ? 'done' : (subtasks.some(s => s.done) ? 'in-progress' : 'todo'),
+                    deadline: q.deadline || '', createdAt: q.createdAt || Date.now(),
+                    completedAt: q.completed ? Date.now() : null, subtasks
+                });
+            });
+            migrated.projects.push(proj);
+            return migrated;
+        }
+    }
+    return JSON.parse(JSON.stringify(DEFAULT_STATE));
+}
+
+function save() {
+    localStorage.setItem(STORE_KEY, JSON.stringify(state));
+}
+
+// ========== INIT ==========
+
 document.addEventListener('DOMContentLoaded', () => {
-    updateDashboard();
-    renderQuests();
-    checkBackupNotification();
-    checkDeadlines();
-
-    // Event Listeners
-    document.getElementById('btn-new-quest').addEventListener('click', () => {
-        openModal();
-    });
-
-    document.getElementById('btn-cancel-modal').addEventListener('click', () => {
-        document.getElementById('quest-modal').classList.add('hidden');
-    });
-
-    document.getElementById('quest-form').addEventListener('submit', handleSaveQuest);
-    
-    document.getElementById('btn-export').addEventListener('click', exportJSON);
-    document.getElementById('file-import').addEventListener('change', importJSON);
-    
-    setInterval(checkDeadlines, 60000);
+    renderAll();
+    setupEventListeners();
+    checkBackupReminder();
 });
 
-function saveState() {
-    localStorage.setItem(GAME_STATE_KEY, JSON.stringify(gameState));
-    updateDashboard();
+function setupEventListeners() {
+    // Sidebar nav
+    document.querySelectorAll('.nav-item').forEach(btn => {
+        btn.addEventListener('click', () => {
+            switchView(btn.dataset.view);
+            if (window.innerWidth <= 768) {
+                document.getElementById('sidebar').classList.remove('open');
+            }
+        });
+    });
+
+    // Sidebar toggle
+    document.getElementById('sidebar-toggle').addEventListener('click', (e) => {
+        e.stopPropagation();
+        document.getElementById('sidebar').classList.toggle('open');
+    });
+
+    // Close sidebar on main content click (mobile)
+    document.querySelector('.main-content').addEventListener('click', () => {
+        document.getElementById('sidebar').classList.remove('open');
+    });
+
+    // Project CRUD
+    document.getElementById('btn-new-project').addEventListener('click', () => openProjectModal());
+    document.getElementById('project-form').addEventListener('submit', handleSaveProject);
+    document.getElementById('btn-cancel-project').addEventListener('click', () => closeModal('project-modal'));
+
+    // Task CRUD
+    document.getElementById('btn-new-task').addEventListener('click', () => openTaskModal());
+    document.getElementById('task-form').addEventListener('submit', handleSaveTask);
+    document.getElementById('btn-cancel-task').addEventListener('click', () => closeModal('task-modal'));
+
+    // Project detail actions
+    document.getElementById('btn-back-dash').addEventListener('click', () => switchView('dashboard'));
+    document.getElementById('btn-edit-project').addEventListener('click', () => openProjectModal(currentProjectId));
+    document.getElementById('btn-archive-project').addEventListener('click', archiveCurrentProject);
+    document.getElementById('btn-delete-project').addEventListener('click', deleteCurrentProject);
+
+    // Backup
+    document.getElementById('btn-export').addEventListener('click', exportData);
+    document.getElementById('file-import').addEventListener('change', importData);
+
+    // Search & Filter
+    document.getElementById('task-search').addEventListener('input', e => { searchQuery = e.target.value.toLowerCase(); renderProjectDetail(); });
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentFilter = btn.dataset.filter;
+            renderProjectDetail();
+        });
+    });
+
+    // Pokemon detail close
+    document.getElementById('btn-close-pokemon').addEventListener('click', () => closeModal('pokemon-detail-modal'));
+
+    // Sad alert revert
+    document.getElementById('btn-cancel-revert').addEventListener('click', () => {
+        pendingRevert = null;
+        closeModal('sad-alert-modal');
+    });
+    document.getElementById('btn-confirm-revert').addEventListener('click', () => {
+        if (pendingRevert) pendingRevert();
+        pendingRevert = null;
+        closeModal('sad-alert-modal');
+    });
+
+    // Close modals on backdrop click
+    document.querySelectorAll('.modal').forEach(m => {
+        m.addEventListener('click', e => { if (e.target === m) m.classList.add('hidden'); });
+    });
+
+    // Keyboard
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') document.querySelectorAll('.modal').forEach(m => m.classList.add('hidden'));
+    });
 }
 
-function openModal(questId = null) {
-    const modal = document.getElementById('quest-modal');
-    const form = document.getElementById('quest-form');
-    const titleEl = document.getElementById('modal-title');
-    
-    form.reset();
-    
-    if (questId) {
-        const q = gameState.quests.find(x => x.id === questId);
-        titleEl.textContent = "Edit Quest";
-        document.getElementById('q-id').value = q.id;
-        document.getElementById('q-title').value = q.title;
-        document.getElementById('q-severity').value = q.severity;
-        if(q.deadline) {
-            document.getElementById('q-deadline').value = q.deadline;
-        }
-        document.getElementById('q-subtasks').value = q.subtasks.map(s => s.text).join(', ');
-        document.getElementById('btn-save-modal').textContent = "Update Quest";
+// ========== VIEWS ==========
+
+function switchView(view, projectId) {
+    currentView = view;
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+
+    if (view === 'project' && projectId) {
+        currentProjectId = projectId;
+        document.getElementById('view-project').classList.add('active');
+        // Highlight project in sidebar
+        document.querySelectorAll('.project-item').forEach(p => p.classList.toggle('active', p.dataset.id === projectId));
+        renderProjectDetail();
     } else {
-        titleEl.textContent = "Create New Quest";
-        document.getElementById('q-id').value = "";
-        document.getElementById('btn-save-modal').textContent = "Accept Quest";
+        currentProjectId = null;
+        document.getElementById(`view-${view}`).classList.add('active');
+        const navBtn = document.querySelector(`.nav-item[data-view="${view}"]`);
+        if (navBtn) navBtn.classList.add('active');
+        document.querySelectorAll('.project-item').forEach(p => p.classList.remove('active'));
+        if (view === 'dashboard') renderDashboard();
+        else if (view === 'pokedex') renderPokedex();
+        else if (view === 'archived') renderArchived();
     }
-    
+}
+
+function renderAll() {
+    updateTopBar();
+    renderSidebarProjects();
+    renderDashboard();
+}
+
+// ========== TOP BAR ==========
+
+function updateTopBar() {
+    const { level, xp } = state.player;
+    const needed = xpForLevel(level);
+    document.getElementById('player-level').textContent = level;
+    document.getElementById('player-rank').textContent = getRank(level);
+    document.getElementById('current-xp').textContent = xp;
+    document.getElementById('next-level-xp').textContent = needed;
+    document.getElementById('xp-bar').style.width = `${(xp / needed) * 100}%`;
+    document.getElementById('player-avatar').src = spriteUrl(getAvatarPokemon(level));
+
+    // Overall progress
+    const activeProjects = state.projects.filter(p => p.status === 'active');
+    let allTasks = [];
+    activeProjects.forEach(p => allTasks = allTasks.concat(p.tasks));
+    const pct = calculateProgress(allTasks);
+    document.getElementById('overall-pct').textContent = pct + '%';
+    const circumference = 2 * Math.PI * 16;
+    document.getElementById('overall-ring').style.strokeDashoffset = circumference - (pct / 100) * circumference;
+
+    // Pokedex count
+    document.getElementById('pokedex-count').textContent = state.pokedex.length;
+}
+
+// ========== SIDEBAR ==========
+
+function renderSidebarProjects() {
+    const list = document.getElementById('project-list');
+    const active = state.projects.filter(p => p.status === 'active');
+    if (!active.length) {
+        list.innerHTML = '<div class="empty-state"><p>No projects yet</p></div>';
+        return;
+    }
+    list.innerHTML = active.map(p => {
+        const taskCount = p.tasks.filter(t => t.status !== 'done').length;
+        return `<button class="project-item ${currentProjectId === p.id ? 'active' : ''}" data-id="${p.id}" onclick="window._openProject('${p.id}')">
+            <span class="project-dot" style="background:${p.color}"></span>
+            <span class="project-item-name">${esc(p.name)}</span>
+            <span class="project-item-count">${taskCount}</span>
+        </button>`;
+    }).join('');
+}
+
+window._openProject = id => {
+    switchView('project', id);
+    if (window.innerWidth <= 768) {
+        document.getElementById('sidebar').classList.remove('open');
+    }
+};
+
+// ========== DASHBOARD ==========
+
+function renderDashboard() {
+    const active = state.projects.filter(p => p.status === 'active');
+    let totalTasks = 0, doneTasks = 0, overdueTasks = 0, inProgressTasks = 0;
+    const now = new Date();
+    active.forEach(p => p.tasks.forEach(t => {
+        totalTasks++;
+        if (t.status === 'done') doneTasks++;
+        else if (t.status === 'in-progress') inProgressTasks++;
+        if (t.deadline && new Date(t.deadline) < now && t.status !== 'done') overdueTasks++;
+    }));
+
+    document.getElementById('stats-grid').innerHTML = `
+        <div class="stat-card"><div class="stat-value" style="color:var(--primary)">${active.length}</div><div class="stat-label">Active Projects</div></div>
+        <div class="stat-card"><div class="stat-value" style="color:var(--info)">${totalTasks - doneTasks}</div><div class="stat-label">Pending Tasks</div></div>
+        <div class="stat-card"><div class="stat-value" style="color:var(--success)">${doneTasks}</div><div class="stat-label">Tasks Completed</div></div>
+        <div class="stat-card"><div class="stat-value" style="color:var(--danger)">${overdueTasks}</div><div class="stat-label">Overdue Tasks</div></div>
+    `;
+
+    const overview = document.getElementById('projects-overview');
+    if (!active.length) {
+        overview.innerHTML = '<div class="empty-state"><p>Create your first project to get started!</p></div>';
+        return;
+    }
+    overview.innerHTML = active.map(p => {
+        const total = p.tasks.length;
+        const done = p.tasks.filter(t => t.status === 'done').length;
+        const pct = calculateProgress(p.tasks);
+        const c = 2 * Math.PI * 16;
+        const offset = c - (pct / 100) * c;
+        return `<div class="project-overview-card" onclick="window._openProject('${p.id}')">
+            <div class="project-ring-wrap">
+                <svg class="project-ring" viewBox="0 0 40 40">
+                    <circle cx="20" cy="20" r="16" class="ring-bg"/>
+                    <circle cx="20" cy="20" r="16" class="ring-fill" style="stroke:${p.color};stroke-dashoffset:${offset}"/>
+                </svg>
+                <span class="project-ring-pct" style="color:${p.color}">${pct}%</span>
+            </div>
+            <div class="project-overview-info">
+                <div class="project-overview-name">${esc(p.name)}</div>
+                <div class="project-overview-stats">${done}/${total} tasks fully done</div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+// ========== PROJECT DETAIL ==========
+
+function getProject(id) { return state.projects.find(p => p.id === (id || currentProjectId)); }
+
+function renderProjectDetail() {
+    const proj = getProject();
+    if (!proj) return switchView('dashboard');
+
+    document.getElementById('project-name').textContent = proj.name;
+    const iconEl = document.getElementById('project-pokemon-icon');
+    if (proj.pokemonId) { iconEl.src = spriteUrl(proj.pokemonId); iconEl.style.display = ''; }
+    else iconEl.style.display = 'none';
+
+    let tasks = [...proj.tasks];
+    if (searchQuery) tasks = tasks.filter(t => t.title.toLowerCase().includes(searchQuery) || (t.description || '').toLowerCase().includes(searchQuery));
+    if (currentFilter !== 'all') tasks = tasks.filter(t => t.status === currentFilter);
+
+    const buckets = { todo: [], 'in-progress': [], done: [] };
+    tasks.forEach(t => { if (buckets[t.status]) buckets[t.status].push(t); });
+
+    ['todo', 'in-progress', 'done'].forEach(status => {
+        const containerId = status === 'todo' ? 'tasks-todo' : status === 'in-progress' ? 'tasks-progress' : 'tasks-done';
+        const countId = status === 'todo' ? 'count-todo' : status === 'in-progress' ? 'count-progress' : 'count-done';
+        const container = document.getElementById(containerId);
+        document.getElementById(countId).textContent = buckets[status].length;
+
+        if (!buckets[status].length) {
+            container.innerHTML = '<div class="empty-state"><p>No tasks</p></div>';
+        } else {
+            container.innerHTML = buckets[status].map(t => renderTaskCard(t, proj.id)).join('');
+        }
+    });
+
+    setupDragAndDrop();
+}
+
+function renderTaskCard(task, projectId) {
+    const priorityLabels = { 1:'Low', 2:'Med', 3:'Normal', 4:'High', 5:'Critical' };
+    let deadlineBadge = '';
+    if (task.deadline) {
+        const diff = new Date(task.deadline) - new Date();
+        const isOverdue = diff < 0 && task.status !== 'done';
+        const days = Math.ceil(diff / 86400000);
+        const label = isOverdue ? 'Overdue' : days === 0 ? 'Today' : days === 1 ? 'Tomorrow' : `${days}d`;
+        deadlineBadge = `<span class="task-badge deadline ${isOverdue ? 'overdue' : ''}">⏳ ${label}</span>`;
+    }
+
+    const stDone = task.subtasks.filter(s => s.done).length;
+    const stTotal = task.subtasks.length;
+    const stBar = stTotal ? `<div class="task-subtasks-bar">
+        <div class="subtask-mini-bar"><div class="subtask-mini-fill" style="width:${(stDone/stTotal)*100}%"></div></div>
+        <span class="subtask-mini-text">${stDone}/${stTotal}</span>
+    </div>` : '';
+
+    const subtasksHtml = task.subtasks.length ? task.subtasks.map(s =>
+        `<div class="subtask-check-item ${s.done ? 'checked' : ''}">
+            <input type="checkbox" ${s.done ? 'checked' : ''} onchange="window._toggleSubtask('${projectId}','${task.id}','${s.id}',this.checked)">
+            <label>${esc(s.text)}</label>
+        </div>`
+    ).join('') : '';
+
+    const descHtml = task.description ? `<div class="task-description">${esc(task.description)}</div>` : '';
+    const hasExpand = task.description || task.subtasks.length;
+    const isOpen = expandedTasks.has(task.id) ? 'open' : '';
+
+    // Move buttons
+    const moves = [];
+    if (task.status !== 'todo') moves.push(`<button class="task-action-btn move-btn" onclick="window._moveTask('${projectId}','${task.id}','todo')">← Todo</button>`);
+    if (task.status !== 'in-progress') moves.push(`<button class="task-action-btn move-btn" onclick="window._moveTask('${projectId}','${task.id}','in-progress')">🔄 Progress</button>`);
+    if (task.status !== 'done') moves.push(`<button class="task-action-btn move-btn" onclick="window._moveTask('${projectId}','${task.id}','done')">✓ Done</button>`);
+
+    return `<div class="task-card priority-${task.priority}" draggable="true" data-task-id="${task.id}" data-project-id="${projectId}">
+        <div class="task-card-title" ${hasExpand ? `style="cursor:pointer" onclick="window._toggleTaskExpand('${task.id}', this)"` : ''}>${esc(task.title)}</div>
+        <div class="task-card-meta">
+            <span class="task-badge">P${task.priority}</span>
+            ${deadlineBadge}
+        </div>
+        ${stBar}
+        ${hasExpand ? `<div class="task-expand ${isOpen}">${descHtml}${subtasksHtml}</div>` : ''}
+        <div class="task-card-actions">
+            ${moves.join('')}
+            <button class="task-action-btn" onclick="window._editTask('${projectId}','${task.id}')">✏️</button>
+            <button class="task-action-btn delete-btn" onclick="window._deleteTask('${projectId}','${task.id}')">🗑️</button>
+        </div>
+    </div>`;
+}
+
+// ========== DRAG AND DROP ==========
+
+function setupDragAndDrop() {
+    document.querySelectorAll('.task-card[draggable]').forEach(card => {
+        card.addEventListener('dragstart', e => {
+            card.classList.add('dragging');
+            e.dataTransfer.setData('text/plain', JSON.stringify({
+                taskId: card.dataset.taskId,
+                projectId: card.dataset.projectId
+            }));
+            e.dataTransfer.effectAllowed = 'move';
+        });
+        card.addEventListener('dragend', () => card.classList.remove('dragging'));
+    });
+
+    document.querySelectorAll('.kanban-column').forEach(col => {
+        col.addEventListener('dragover', e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; col.classList.add('drag-over'); });
+        col.addEventListener('dragleave', () => col.classList.remove('drag-over'));
+        col.addEventListener('drop', e => {
+            e.preventDefault();
+            col.classList.remove('drag-over');
+            try {
+                const { taskId, projectId } = JSON.parse(e.dataTransfer.getData('text/plain'));
+                const newStatus = col.dataset.status;
+                moveTask(projectId, taskId, newStatus);
+            } catch(err) {}
+        });
+    });
+}
+
+// ========== TASK ACTIONS ==========
+
+function moveTask(projectId, taskId, newStatus) {
+    const proj = getProject(projectId);
+    const task = proj?.tasks.find(t => t.id === taskId);
+    if (!task || task.status === newStatus) return;
+
+    const oldStatus = task.status;
+
+    if (oldStatus === 'done' && newStatus !== 'done') {
+        const xpLost = 20 * task.priority;
+        document.getElementById('sad-alert-xp').textContent = xpLost;
+        pendingRevert = () => {
+            task.status = newStatus;
+            task.completedAt = null;
+            removeXP(xpLost);
+            notify(`Lost ${xpLost} XP`, 'punish');
+            save();
+            renderProjectDetail();
+            renderSidebarProjects();
+            updateTopBar();
+        };
+        document.getElementById('sad-alert-modal').classList.remove('hidden');
+        return;
+    }
+
+    task.status = newStatus;
+
+    if (newStatus === 'done' && oldStatus !== 'done') {
+        task.completedAt = Date.now();
+        task.subtasks.forEach(s => s.done = true);
+        const xp = 20 * task.priority;
+        addXP(xp);
+        catchPokemon(task.title);
+        showCelebration(xp);
+        fireConfetti(true);
+    } else if (newStatus !== 'done' && oldStatus === 'done') {
+        task.completedAt = null;
+    }
+
+    save();
+    renderProjectDetail();
+    renderSidebarProjects();
+    updateTopBar();
+}
+
+window._toggleTaskExpand = (taskId, el) => {
+    if (expandedTasks.has(taskId)) expandedTasks.delete(taskId);
+    else expandedTasks.add(taskId);
+    const expandEl = el.parentElement.querySelector('.task-expand');
+    if (expandEl) expandEl.classList.toggle('open');
+};
+
+window._moveTask = (pId, tId, status) => moveTask(pId, tId, status);
+window._editTask = (pId, tId) => openTaskModal(tId);
+window._deleteTask = (pId, tId) => {
+    if (!confirm('Delete this task?')) return;
+    const proj = getProject(pId);
+    proj.tasks = proj.tasks.filter(t => t.id !== tId);
+    save();
+    renderProjectDetail();
+    renderSidebarProjects();
+    updateTopBar();
+};
+
+window._toggleSubtask = (pId, tId, sId, checked) => {
+    const proj = getProject(pId);
+    const task = proj?.tasks.find(t => t.id === tId);
+    const sub = task?.subtasks.find(s => s.id === sId);
+    if (!sub) return;
+
+    const wasDone = sub.done;
+    if (checked === wasDone) return;
+
+    if (!checked && wasDone) {
+        let xpLost = 5 * task.priority;
+        const willRevertMainTask = (task.status === 'done');
+        if (willRevertMainTask) xpLost += 20 * task.priority;
+
+        document.getElementById('sad-alert-xp').textContent = xpLost;
+        pendingRevert = () => {
+            sub.done = false;
+            removeXP(xpLost);
+            notify(`Lost ${xpLost} XP`, 'punish');
+            
+            const anyDone = task.subtasks.some(s => s.done);
+            if (willRevertMainTask) {
+                task.status = 'in-progress';
+                task.completedAt = null;
+            } else if (!anyDone && task.status === 'in-progress') {
+                task.status = 'todo';
+            }
+
+            save();
+            renderProjectDetail();
+            renderSidebarProjects();
+            updateTopBar();
+        };
+        document.getElementById('sad-alert-modal').classList.remove('hidden');
+        return;
+    }
+
+    sub.done = true;
+    const xp = 5 * task.priority;
+    addXP(xp);
+    notify(`+${xp} XP!`, 'reward');
+    fireConfetti(false);
+
+    // Auto-status
+    const allDone = task.subtasks.length && task.subtasks.every(s => s.done);
+    const anyDone = task.subtasks.some(s => s.done);
+    if (allDone && task.status !== 'done') {
+        moveTask(pId, tId, 'done');
+        return;
+    } else if (anyDone && task.status === 'todo') {
+        task.status = 'in-progress';
+    }
+
+    save();
+    renderProjectDetail();
+    updateTopBar();
+};
+
+// ========== POKEDEX ==========
+
+function catchPokemon(taskTitle) {
+    const caughtIds = new Set(state.pokedex.map(p => p.pokemonIdx));
+    let available = [];
+    for (let i = 0; i < POKEMON_POOL.length; i++) {
+        if (!caughtIds.has(i)) available.push(i);
+    }
+    // If all caught, allow repeats starting from beginning
+    if (!available.length) {
+        // Find least-used index
+        const counts = {};
+        state.pokedex.forEach(p => { counts[p.pokemonIdx] = (counts[p.pokemonIdx] || 0) + 1; });
+        let minCount = Infinity;
+        POKEMON_POOL.forEach((_, i) => { if ((counts[i] || 0) < minCount) minCount = counts[i] || 0; });
+        available = POKEMON_POOL.map((_, i) => i).filter(i => (counts[i] || 0) === minCount);
+    }
+
+    const idx = available[Math.floor(Math.random() * available.length)];
+    const [pokeId, pokeName] = POKEMON_POOL[idx];
+    state.pokedex.push({ pokemonIdx: idx, taskTitle, date: Date.now() });
+    save();
+
+    notify(`You caught ${pokeName}!`, 'reward', spriteUrlStatic(pokeId));
+}
+
+function renderPokedex() {
+    const grid = document.getElementById('pokedex-grid');
+    document.getElementById('pokedex-subtitle').textContent = `${state.pokedex.length} Pokémon caught — Complete tasks to catch more!`;
+
+    if (!state.pokedex.length) {
+        grid.innerHTML = '<div class="empty-state"><p>No Pokémon caught yet. Complete tasks to start your collection!</p></div>';
+        return;
+    }
+
+    grid.innerHTML = state.pokedex.map((entry, i) => {
+        const [pokeId, pokeName] = POKEMON_POOL[entry.pokemonIdx];
+        return `<div class="pokedex-card" onclick="window._showPokemon(${i})">
+            <img src="${spriteUrlStatic(pokeId)}" alt="${pokeName}">
+            <span>${pokeName}</span>
+        </div>`;
+    }).join('');
+}
+
+window._showPokemon = idx => {
+    const entry = state.pokedex[idx];
+    if (!entry) return;
+    const [pokeId, pokeName] = POKEMON_POOL[entry.pokemonIdx];
+    document.getElementById('pd-sprite').src = spriteUrl(pokeId);
+    document.getElementById('pd-name').textContent = pokeName;
+    document.getElementById('pd-task').textContent = entry.taskTitle;
+    document.getElementById('pd-date').textContent = new Date(entry.date).toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' });
+    document.getElementById('pokemon-detail-modal').classList.remove('hidden');
+};
+
+// ========== ARCHIVED ==========
+
+function renderArchived() {
+    const archived = state.projects.filter(p => p.status === 'archived');
+    const container = document.getElementById('archived-list');
+    if (!archived.length) {
+        container.innerHTML = '<div class="empty-state"><p>No archived projects.</p></div>';
+        return;
+    }
+    container.innerHTML = archived.map(p => {
+        const done = p.tasks.filter(t => t.status === 'done').length;
+        return `<div class="archived-card">
+            <div class="archived-card-info">
+                <h4><span style="color:${p.color}">●</span> ${esc(p.name)}</h4>
+                <p>${done}/${p.tasks.length} tasks completed</p>
+            </div>
+            <div style="display:flex;gap:8px">
+                <button class="btn btn-sm btn-secondary" onclick="window._unarchive('${p.id}')">♻️ Restore</button>
+                <button class="btn btn-sm btn-danger" onclick="window._deleteProject('${p.id}')">🗑️</button>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+window._unarchive = id => {
+    const p = state.projects.find(pr => pr.id === id);
+    if (p) { p.status = 'active'; save(); renderAll(); renderArchived(); }
+};
+
+window._deleteProject = id => {
+    if (!confirm('Permanently delete this project and all its tasks?')) return;
+    state.projects = state.projects.filter(p => p.id !== id);
+    save();
+    renderAll();
+    if (currentView === 'archived') renderArchived();
+};
+
+// ========== PROJECT MODAL ==========
+
+function openProjectModal(editId) {
+    const modal = document.getElementById('project-modal');
+    const form = document.getElementById('project-form');
+    form.reset();
+    document.getElementById('p-id').value = '';
+
+    // Color picker
+    const picker = document.getElementById('color-picker');
+    picker.innerHTML = PROJECT_COLORS.map(c =>
+        `<div class="color-swatch" style="background:${c}" data-color="${c}" onclick="document.querySelectorAll('.color-swatch').forEach(s=>s.classList.remove('selected'));this.classList.add('selected')"></div>`
+    ).join('');
+
+    if (editId) {
+        const p = state.projects.find(pr => pr.id === editId);
+        document.getElementById('project-modal-title').textContent = 'Edit Project';
+        document.getElementById('p-id').value = p.id;
+        document.getElementById('p-name').value = p.name;
+        document.getElementById('p-desc').value = p.description || '';
+        const swatch = picker.querySelector(`[data-color="${p.color}"]`);
+        if (swatch) swatch.classList.add('selected');
+    } else {
+        document.getElementById('project-modal-title').textContent = 'New Project';
+        picker.querySelector('.color-swatch')?.classList.add('selected');
+    }
+
     modal.classList.remove('hidden');
 }
 
-function handleSaveQuest(e) {
+function handleSaveProject(e) {
     e.preventDefault();
-    const id = document.getElementById('q-id').value;
-    const title = document.getElementById('q-title').value;
-    const severity = parseInt(document.getElementById('q-severity').value);
-    const deadline = document.getElementById('q-deadline').value;
-    const subtasksText = document.getElementById('q-subtasks').value;
-
-    const newSubtaskTexts = subtasksText.split(',').map(s => s.trim()).filter(s => s);
+    const id = document.getElementById('p-id').value;
+    const name = document.getElementById('p-name').value.trim();
+    const desc = document.getElementById('p-desc').value.trim();
+    const selectedColor = document.querySelector('.color-swatch.selected');
+    const color = selectedColor ? selectedColor.dataset.color : PROJECT_COLORS[0];
 
     if (id) {
-        // Update Existing
-        const quest = gameState.quests.find(q => q.id === id);
-        quest.title = title;
-        quest.severity = severity;
-        quest.deadline = deadline;
-        
-        // Smart merge subtasks to preserve progress
-        const updatedSubtasks = newSubtaskTexts.map(text => {
-            const existing = quest.subtasks.find(s => s.text.toLowerCase() === text.toLowerCase());
-            if (existing) return existing;
-            return { id: generateId(), text, progress: 0, rewardClaimed: false };
-        });
-        quest.subtasks = updatedSubtasks;
-        showNotification('Quest Updated Successfully!', 'info');
-
-        // Check completion state in case subtasks were removed making it 100%
-        checkQuestCompletion(quest);
-
+        const p = state.projects.find(pr => pr.id === id);
+        p.name = name; p.description = desc; p.color = color;
+        notify('Project updated!', 'info');
     } else {
-        // Create New
-        const subtasks = newSubtaskTexts.map(text => ({
-            id: generateId(),
-            text,
-            progress: 0,
-            rewardClaimed: false
-        }));
+        // Assign a random pokemon from unused pool
+        const usedPokemonIds = state.projects.map(p => p.pokemonId).filter(Boolean);
+        const starterPool = [25,4,7,1,133,39,54,52,152,155,158,175,403,390,393];
+        const available = starterPool.filter(id => !usedPokemonIds.includes(id));
+        const pokemonId = available.length ? available[Math.floor(Math.random() * available.length)] : starterPool[Math.floor(Math.random() * starterPool.length)];
 
-        const newQuest = {
-            id: generateId(),
-            title,
-            severity,
-            deadline,
-            subtasks,
-            createdAt: Date.now(),
-            completed: false,
-            punished: false
-        };
-        gameState.quests.push(newQuest);
-        showNotification('New Quest Added!', 'reward');
+        state.projects.push({
+            id: genId(), name, description: desc, color, pokemonId,
+            createdAt: Date.now(), status: 'active', tasks: []
+        });
+        notify('Project created!', 'reward');
     }
 
-    saveState();
-    document.getElementById('quest-modal').classList.add('hidden');
-    renderQuests();
+    save();
+    closeModal('project-modal');
+    renderAll();
 }
 
-function getRankLabel(severity) {
-    const labels = {1: 'D (Easy)', 2: 'C (Medium)', 3: 'B (Hard)', 4: 'A (Epic)', 5: 'S (Legendary)'};
-    return `Rank ${labels[severity] || severity}`;
+// ========== TASK MODAL ==========
+
+function openTaskModal(editTaskId) {
+    const modal = document.getElementById('task-modal');
+    const form = document.getElementById('task-form');
+    form.reset();
+    document.getElementById('t-id').value = '';
+
+    if (editTaskId) {
+        const proj = getProject();
+        const task = proj.tasks.find(t => t.id === editTaskId);
+        document.getElementById('task-modal-title').textContent = 'Edit Task';
+        document.getElementById('t-id').value = task.id;
+        document.getElementById('t-title').value = task.title;
+        document.getElementById('t-desc').value = task.description || '';
+        document.getElementById('t-priority').value = task.priority;
+        document.getElementById('t-deadline').value = task.deadline || '';
+        document.getElementById('t-subtasks').value = task.subtasks.map(s => s.text).join('\n');
+    } else {
+        document.getElementById('task-modal-title').textContent = 'New Task';
+    }
+
+    modal.classList.remove('hidden');
 }
 
-function renderQuests() {
-    const activeContainer = document.getElementById('active-quests');
-    const completedContainer = document.getElementById('completed-quests');
-    activeContainer.innerHTML = '';
-    completedContainer.innerHTML = '';
+function handleSaveTask(e) {
+    e.preventDefault();
+    const proj = getProject();
+    if (!proj) return;
 
-    // Sort: severity desc, then deadline
-    const sortedQuests = [...gameState.quests].sort((a, b) => {
-        if (a.severity !== b.severity) return b.severity - a.severity;
-        if (a.deadline && b.deadline) return new Date(a.deadline) - new Date(b.deadline);
-        if (a.deadline) return -1;
-        if (b.deadline) return 1;
-        return b.createdAt - a.createdAt;
-    });
+    const id = document.getElementById('t-id').value;
+    const title = document.getElementById('t-title').value.trim();
+    const desc = document.getElementById('t-desc').value.trim();
+    const priority = parseInt(document.getElementById('t-priority').value);
+    const deadline = document.getElementById('t-deadline').value;
+    const subtaskLines = document.getElementById('t-subtasks').value.split('\n').map(s => s.trim()).filter(Boolean);
 
-    sortedQuests.forEach(quest => {
-        const card = document.createElement('div');
-        card.className = `glass-panel quest-card severity-${quest.severity} ${quest.completed ? 'completed' : ''}`;
-        
-        // Calc Progress
-        let progressPercent = 0;
-        if (quest.completed) {
-            progressPercent = 100;
-        } else if (quest.subtasks.length > 0) {
-            const total = quest.subtasks.reduce((sum, st) => sum + st.progress, 0);
-            progressPercent = Math.round(total / quest.subtasks.length);
-        }
-
-        let deadlineHtml = '';
-        let isOverdue = false;
-        if (quest.deadline) {
-            const timeDiff = new Date(quest.deadline) - new Date();
-            const daysLeft = timeDiff / (1000 * 60 * 60 * 24);
-            isOverdue = timeDiff < 0 && !quest.completed;
-            let timeStr = isOverdue ? 'Overdue!' : (daysLeft < 1 ? Math.floor(timeDiff / (1000 * 60 * 60)) + ' hrs left' : `${Math.ceil(daysLeft)} days left`);
-            deadlineHtml = `<span class="badge badge-deadline ${isOverdue ? 'overdue' : ''}">⏳ ${timeStr}</span>`;
-        }
-
-        const subtasksHtml = quest.subtasks.map(st => `
-            <div class="subtask-item ${st.progress === 100 ? 'done' : ''}">
-                <div class="subtask-header">
-                    <span class="subtask-label">${st.text}</span>
-                    <span class="subtask-percent" id="pct-${st.id}">${st.progress}%</span>
-                </div>
-                <input type="range" class="subtask-slider" min="0" max="100" value="${st.progress}" 
-                       oninput="updateVisualProgress(this, '${st.id}')"
-                       onchange="commitSubtaskProgress('${quest.id}', '${st.id}', this.value)"
-                       ${quest.completed ? 'disabled' : ''}>
-            </div>
-        `).join('');
-
-        card.innerHTML = `
-            <div class="quest-header">
-                <div class="quest-title-area">
-                    <div class="quest-title">${quest.title}</div>
-                    <div class="quest-badges">
-                        <span class="badge badge-rank">${getRankLabel(quest.severity)}</span>
-                        ${deadlineHtml}
-                    </div>
-                </div>
-            </div>
-            
-            <div class="progress-bar-bg" style="height: 6px; margin: 15px 0;">
-                <div class="progress-bar-fill" style="width: ${progressPercent}%; ${progressPercent === 100 ? 'background: var(--success);' : ''}"></div>
-            </div>
-
-            <div class="subtask-list">
-                ${subtasksHtml}
-            </div>
-
-            ${!quest.subtasks.length && !quest.completed ? `
-                <div style="margin-top: 15px;">
-                    <button class="btn btn-primary glow-btn" onclick="completeTaskWithoutSubtasks('${quest.id}')">
-                        ⚡ Complete Quest
-                    </button>
-                </div>
-            ` : ''}
-
-            <div class="quest-actions">
-                ${!quest.completed ? `<button class="btn-icon" onclick="openModal('${quest.id}')" title="Edit Quest">✏️ Edit</button>` : ''}
-                <button class="btn-icon delete" onclick="deleteQuest('${quest.id}')" title="Delete Quest">🗑️ Delete</button>
-            </div>
-        `;
-
-        if (quest.completed) {
-            completedContainer.appendChild(card);
-        } else {
-            activeContainer.appendChild(card);
-        }
-    });
-
-    if(activeContainer.innerHTML === '') {
-        activeContainer.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 20px;">No active quests. Time to rest, or accept a new one!</p>';
+    if (id) {
+        const task = proj.tasks.find(t => t.id === id);
+        task.title = title;
+        task.description = desc;
+        task.priority = priority;
+        task.deadline = deadline;
+        // Smart merge subtasks
+        task.subtasks = subtaskLines.map(text => {
+            const existing = task.subtasks.find(s => s.text.toLowerCase() === text.toLowerCase());
+            return existing || { id: genId(), text, done: false };
+        });
+        notify('Task updated!', 'info');
+    } else {
+        proj.tasks.push({
+            id: genId(), title, description: desc, priority,
+            status: 'todo', deadline, createdAt: Date.now(), completedAt: null,
+            subtasks: subtaskLines.map(text => ({ id: genId(), text, done: false }))
+        });
+        notify('Task created!', 'reward');
     }
-    if(completedContainer.innerHTML === '') {
-        completedContainer.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 20px;">The Hall of Fame is empty. Complete quests to forge your legacy!</p>';
-    }
+
+    save();
+    closeModal('task-modal');
+    renderProjectDetail();
+    renderSidebarProjects();
+    updateTopBar();
 }
 
-// Live update slider text
-window.updateVisualProgress = function(sliderEl, subtaskId) {
-    document.getElementById(`pct-${subtaskId}`).textContent = `${sliderEl.value}%`;
-};
+// ========== ARCHIVE / DELETE PROJECT ==========
 
-// Commit slider change
-window.commitSubtaskProgress = function(questId, subtaskId, value) {
-    const val = parseInt(value);
-    const quest = gameState.quests.find(q => q.id === questId);
-    const subtask = quest.subtasks.find(s => s.id === subtaskId);
-    
-    subtask.progress = val;
-
-    if (val === 100 && !subtask.rewardClaimed) {
-        subtask.rewardClaimed = true;
-        // Dynamic XP based on quest severity: 15 to 30 base * severity
-        const xpReward = Math.floor(Math.random() * 16 + 15) * quest.severity; 
-        addXP(xpReward);
-        fireConfetti(false);
-        
-        // Random small pokemon
-        const pokeId = subtaskPokemons[Math.floor(Math.random() * subtaskPokemons.length)];
-        const pokeUrl = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/${pokeId}.gif`;
-        
-        showNotification(`+${xpReward} XP! Subtask cleared.`, 'reward', pokeUrl);
-    } 
-    // If they move it back from 100
-    else if (val < 100 && subtask.rewardClaimed) {
-        // Optional: remove rewardClaimed so they can earn it again? No, prevents abuse.
-        // But if they genuinely reopened it, we'll keep rewardClaimed=true to prevent infinite XP farming.
-    }
-
-    checkQuestCompletion(quest);
-    saveState();
-    renderQuests();
-};
-
-function checkQuestCompletion(quest) {
-    if (quest.subtasks.length > 0) {
-        const allDone = quest.subtasks.every(s => s.progress === 100);
-        if (allDone && !quest.completed) {
-            completeQuest(quest);
-        } else if (!allDone && quest.completed) {
-            quest.completed = false; // Reopened
-        }
-    }
+function archiveCurrentProject() {
+    const proj = getProject();
+    if (!proj || !confirm(`Archive "${proj.name}"?`)) return;
+    proj.status = 'archived';
+    save();
+    switchView('dashboard');
+    renderAll();
+    notify('Project archived.', 'info');
 }
 
-window.completeTaskWithoutSubtasks = function(questId) {
-    const quest = gameState.quests.find(q => q.id === questId);
-    if(!quest.completed) {
-        completeQuest(quest);
-        saveState();
-        renderQuests();
-    }
-};
-
-function completeQuest(quest) {
-    quest.completed = true;
-    // Base massive reward for full quest: 100 to 200 * severity
-    const xpReward = Math.floor(Math.random() * 101 + 100) * quest.severity;
-    addXP(xpReward);
-    showQuestCompleteCelebration(xpReward);
+function deleteCurrentProject() {
+    if (!confirm('Permanently delete this project and all tasks?')) return;
+    state.projects = state.projects.filter(p => p.id !== currentProjectId);
+    save();
+    switchView('dashboard');
+    renderAll();
 }
 
-window.deleteQuest = function(questId) {
-    if(confirm("Are you sure you want to delete this quest completely?")) {
-        gameState.quests = gameState.quests.filter(q => q.id !== questId);
-        saveState();
-        renderQuests();
-    }
-};
+// ========== GAMIFICATION ==========
 
-// Gamification System
+function removeXP(amount) {
+    state.player.xp -= amount;
+    while (state.player.xp < 0 && state.player.level > 1) {
+        state.player.level--;
+        state.player.xp += xpForLevel(state.player.level);
+    }
+    if (state.player.xp < 0) state.player.xp = 0;
+    save();
+    updateTopBar();
+}
+
 function addXP(amount) {
-    gameState.player.xp += amount;
-    checkLevelUp();
-}
-
-function checkLevelUp() {
-    let xpNeeded = gameState.player.level * 150; // harder to level up
-    
-    while (gameState.player.xp >= xpNeeded) {
-        gameState.player.xp -= xpNeeded;
-        gameState.player.level += 1;
-        xpNeeded = gameState.player.level * 150;
-        
-        showNotification(`LEVEL UP! You are now Level ${gameState.player.level}`, 'reward', 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/rare-candy.png');
+    state.player.xp += amount;
+    let needed = xpForLevel(state.player.level);
+    while (state.player.xp >= needed) {
+        state.player.xp -= needed;
+        state.player.level++;
+        needed = xpForLevel(state.player.level);
+        notify(`LEVEL UP! Now Level ${state.player.level} — ${getRank(state.player.level)}`, 'reward',
+            spriteUrlStatic(getAvatarPokemon(state.player.level)));
         fireConfetti(true);
     }
+    save();
+    updateTopBar();
 }
 
-function updateDashboard() {
-    const level = gameState.player.level;
-    const xp = gameState.player.xp;
-    const xpNeeded = level * 150;
-
-    document.getElementById('player-level').textContent = level;
-    document.getElementById('current-xp').textContent = xp;
-    document.getElementById('next-level-xp').textContent = xpNeeded;
-    document.getElementById('xp-bar').style.width = `${(xp / xpNeeded) * 100}%`;
-
-    const rankIndex = Math.min(level - 1, RANKS.length - 1);
-    document.getElementById('player-rank').textContent = RANKS[rankIndex] + (level > RANKS.length ? '+' : '');
-
-    // Calculate Overall Project Progress
-    let totalWeight = 0;
-    let completedWeight = 0;
-
-    gameState.quests.forEach(q => {
-        const weight = q.severity;
-        totalWeight += weight;
-        
-        if (q.completed) {
-            completedWeight += weight;
-        } else if (q.subtasks.length > 0) {
-            const subDonePct = q.subtasks.reduce((sum, st) => sum + st.progress, 0) / q.subtasks.length;
-            completedWeight += (subDonePct / 100) * weight;
-        }
-    });
-
-    const percent = totalWeight === 0 ? 0 : Math.round((completedWeight / totalWeight) * 100);
-    document.getElementById('overall-progress-bar').style.width = `${percent}%`;
-    document.getElementById('overall-progress-text').textContent = `${percent}% Complete`;
-}
-
-// Visual Effects
-function fireConfetti(massive = false) {
-    if(massive) {
-        var duration = 3 * 1000;
-        var end = Date.now() + duration;
-
-        (function frame() {
-            confetti({ particleCount: 6, angle: 60, spread: 55, origin: { x: 0 }, colors: ['#8b5cf6', '#10b981', '#f59e0b', '#06b6d4'] });
-            confetti({ particleCount: 6, angle: 120, spread: 55, origin: { x: 1 }, colors: ['#8b5cf6', '#10b981', '#f59e0b', '#06b6d4'] });
-            if (Date.now() < end) requestAnimationFrame(frame);
-        }());
-    } else {
-        confetti({ particleCount: 80, spread: 60, origin: { y: 0.7 }, colors: ['#8b5cf6', '#10b981', '#06b6d4'] });
-    }
-}
-
-function showQuestCompleteCelebration(xpReward) {
+function showCelebration(xp) {
     const overlay = document.createElement('div');
     overlay.className = 'celebration-overlay';
-    
-    // Always Snorlax for full task completion
-    const snorlaxUrl = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/${MAIN_BOSS_POKEMON}.gif`;
-    
-    overlay.innerHTML = `
-        <img src="${snorlaxUrl}" alt="Snorlax">
-        <h2>QUEST CLEARED!</h2>
-        <p>+${xpReward} XP</p>
-    `;
-    
+    const pokeId = getAvatarPokemon(state.player.level);
+    overlay.innerHTML = `<img src="${spriteUrl(pokeId)}" alt=""><h2>TASK CLEARED!</h2><p>+${xp} XP</p>`;
     document.body.appendChild(overlay);
-    fireConfetti(true);
-    
-    setTimeout(() => {
-        overlay.style.opacity = '0';
-        overlay.style.transition = 'opacity 0.6s';
-        setTimeout(() => overlay.remove(), 600);
-    }, 4500);
+    setTimeout(() => { overlay.style.opacity = '0'; overlay.style.transition = 'opacity 0.5s'; setTimeout(() => overlay.remove(), 500); }, 3000);
 }
 
-function showNotification(message, type = 'info', imgUrl = null) {
-    const container = document.getElementById('notification-container');
-    const el = document.createElement('div');
-    el.className = `notification ${type}`;
-    
-    let iconHtml = '';
-    if (imgUrl) {
-        iconHtml = `<img src="${imgUrl}" class="poke-sprite">`;
+function fireConfetti(big) {
+    if (typeof confetti === 'undefined') return;
+    const colors = ['#8b5cf6','#10b981','#f59e0b','#06b6d4','#ec4899'];
+    if (big) {
+        const end = Date.now() + 2000;
+        (function frame() {
+            confetti({ particleCount: 4, angle: 60, spread: 55, origin: { x: 0 }, colors });
+            confetti({ particleCount: 4, angle: 120, spread: 55, origin: { x: 1 }, colors });
+            if (Date.now() < end) requestAnimationFrame(frame);
+        })();
     } else {
-        let icon = 'ℹ️';
-        if(type === 'reward') icon = '⭐';
-        if(type === 'punish') icon = '⚠️';
-        iconHtml = `<span style="font-size: 1.5rem">${icon}</span>`;
+        confetti({ particleCount: 50, spread: 60, origin: { y: 0.7 }, colors });
     }
-
-    el.innerHTML = `${iconHtml} <div>${message}</div>`;
-    container.appendChild(el);
-
-    setTimeout(() => {
-        el.style.opacity = '0';
-        el.style.transform = 'translateX(120%)';
-        el.style.transition = 'all 0.4s ease';
-        setTimeout(() => el.remove(), 400);
-    }, 4000);
 }
 
-// Backup & Import
-function exportJSON() {
-    gameState.player.lastBackup = Date.now();
-    saveState();
-    
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(gameState));
-    const dlAnchorElem = document.createElement('a');
-    dlAnchorElem.setAttribute("href", dataStr);
-    dlAnchorElem.setAttribute("download", `quest_log_backup_${new Date().toISOString().split('T')[0]}.json`);
-    dlAnchorElem.click();
-    showNotification('Backup Saved Successfully!', 'reward');
+// ========== BACKUP ==========
+
+function exportData() {
+    state.player.lastBackup = Date.now();
+    save();
+    const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `quest_planner_backup_${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    notify('Backup saved!', 'reward');
 }
 
-function importJSON(e) {
+function importData(e) {
     const file = e.target.files[0];
     if (!file) return;
-
     const reader = new FileReader();
-    reader.onload = function(e) {
+    reader.onload = ev => {
         try {
-            const data = JSON.parse(e.target.result);
-            if(data.player && data.quests) {
-                gameState = data;
-                saveState();
-                renderQuests();
-                showNotification('Backup Loaded Successfully!', 'reward');
-            } else {
-                throw new Error("Invalid format");
-            }
-        } catch (err) {
-            showNotification('Error loading file. Invalid format.', 'punish');
-        }
+            const data = JSON.parse(ev.target.result);
+            if (data.player && data.projects) {
+                state = data;
+                if (!state.pokedex) state.pokedex = [];
+                save();
+                renderAll();
+                switchView('dashboard');
+                notify('Backup loaded!', 'reward');
+            } else throw new Error('Invalid');
+        } catch { notify('Invalid backup file.', 'punish'); }
     };
     reader.readAsText(file);
     e.target.value = '';
 }
 
-function checkBackupNotification() {
-    const twoDaysMs = 2 * 24 * 60 * 60 * 1000;
-    if (Date.now() - gameState.player.lastBackup > twoDaysMs) {
-        showNotification('It has been over 2 days since your last backup! Please export your quests.', 'punish');
+function checkBackupReminder() {
+    if (Date.now() - state.player.lastBackup > 2 * 86400000) {
+        notify('Backup reminder! It\'s been over 2 days.', 'punish');
     }
 }
 
-function checkDeadlines() {
-    let punished = false;
-    gameState.quests.forEach(q => {
-        if (!q.completed && q.deadline) {
-            const timeDiff = new Date(q.deadline) - new Date();
-            if (timeDiff < 0 && !q.punished) {
-                // Overdue
-                gameState.player.xp = Math.max(0, gameState.player.xp - 50); // increased punishment
-                q.punished = true; 
-                punished = true;
-                showNotification(`Quest Overdue: ${q.title}! -50 XP`, 'punish');
-            }
+// ========== UTILITIES ==========
+
+function calculateProgress(tasks) {
+    if (!tasks || !tasks.length) return 0;
+    let completedWeight = 0;
+    tasks.forEach(t => {
+        if (t.status === 'done') {
+            completedWeight += 1;
+        } else if (t.subtasks && t.subtasks.length > 0) {
+            const subDone = t.subtasks.filter(s => s.done).length;
+            completedWeight += (subDone / t.subtasks.length);
+        } else if (t.status === 'in-progress') {
+            completedWeight += 0.5;
         }
     });
-    
-    if(punished) {
-        saveState();
-        renderQuests();
-    }
+    return Math.round((completedWeight / tasks.length) * 100);
 }
 
-function generateId() {
-    return Math.random().toString(36).substr(2, 9);
+function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+function esc(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+
+function notify(message, type = 'info', imgUrl) {
+    const container = document.getElementById('notification-container');
+    const el = document.createElement('div');
+    el.className = `notification ${type}`;
+    const icon = imgUrl ? `<img src="${imgUrl}">` : type === 'reward' ? '⭐' : type === 'punish' ? '⚠️' : 'ℹ️';
+    el.innerHTML = `${imgUrl ? icon : `<span style="font-size:1.2rem">${icon}</span>`} <div>${message}</div>`;
+    container.appendChild(el);
+    setTimeout(() => {
+        el.style.opacity = '0'; el.style.transform = 'translateX(120%)'; el.style.transition = 'all 0.3s';
+        setTimeout(() => el.remove(), 300);
+    }, 3500);
 }
