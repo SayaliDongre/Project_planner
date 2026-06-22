@@ -292,12 +292,13 @@ function renderSidebarProjects() {
     }
     list.innerHTML = active.map(p => {
         const taskCount = p.tasks.filter(t => t.status !== 'done').length;
-        return `<button class="project-item ${currentProjectId === p.id ? 'active' : ''}" data-id="${p.id}" onclick="window._openProject('${p.id}')">
+        return `<button class="project-item ${currentProjectId === p.id ? 'active' : ''}" data-id="${p.id}" onclick="window._openProject('${p.id}')" draggable="true">
             <span class="project-dot" style="background:${p.color}"></span>
             <span class="project-item-name">${esc(p.name)}</span>
             <span class="project-item-count">${taskCount}</span>
         </button>`;
     }).join('');
+    setupProjectDragAndDrop();
 }
 
 window._openProject = id => {
@@ -443,78 +444,211 @@ function renderTaskCard(task, projectId) {
 
 // ========== DRAG AND DROP ==========
 
+function getDragAfterElement(container, y, itemSelector) {
+    const draggableElements = [...container.querySelectorAll(`${itemSelector}:not(.dragging)`)];
+
+    return draggableElements.reduce((closest, child) => {
+        const box = child.getBoundingClientRect();
+        const offset = y - box.top - box.height / 2;
+        if (offset < 0 && offset > closest.offset) {
+            return { offset: offset, element: child };
+        } else {
+            return closest;
+        }
+    }, { offset: Number.NEGATIVE_INFINITY }).element;
+}
+
 function setupDragAndDrop() {
     document.querySelectorAll('.task-card[draggable]').forEach(card => {
         card.addEventListener('dragstart', e => {
             card.classList.add('dragging');
             e.dataTransfer.setData('text/plain', JSON.stringify({
+                type: 'task',
                 taskId: card.dataset.taskId,
                 projectId: card.dataset.projectId
             }));
             e.dataTransfer.effectAllowed = 'move';
+            setTimeout(() => card.style.opacity = '0.5', 0);
         });
-        card.addEventListener('dragend', () => card.classList.remove('dragging'));
+        card.addEventListener('dragend', () => {
+            card.classList.remove('dragging');
+            card.style.opacity = '1';
+        });
     });
 
     document.querySelectorAll('.kanban-column').forEach(col => {
-        col.addEventListener('dragover', e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; col.classList.add('drag-over'); });
+        if (col.dataset.dndSetup) return;
+        col.dataset.dndSetup = 'true';
+
+        col.addEventListener('dragover', e => {
+            const dragging = document.querySelector('.task-card.dragging');
+            if (!dragging) return;
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            col.classList.add('drag-over');
+            
+            const list = col.querySelector('.task-list');
+            const afterElement = getDragAfterElement(list, e.clientY, '.task-card');
+            if (afterElement == null) {
+                list.appendChild(dragging);
+            } else {
+                list.insertBefore(dragging, afterElement);
+            }
+        });
         col.addEventListener('dragleave', () => col.classList.remove('drag-over'));
         col.addEventListener('drop', e => {
+            const dragging = document.querySelector('.task-card.dragging');
+            if (!dragging) return;
             e.preventDefault();
             col.classList.remove('drag-over');
             try {
-                const { taskId, projectId } = JSON.parse(e.dataTransfer.getData('text/plain'));
+                const data = JSON.parse(e.dataTransfer.getData('text/plain'));
+                if (data.type !== 'task') return;
+                
+                const list = col.querySelector('.task-list');
                 const newStatus = col.dataset.status;
-                moveTask(projectId, taskId, newStatus);
+                const afterElement = getDragAfterElement(list, e.clientY, '.task-card');
+                const afterTaskId = afterElement ? afterElement.dataset.taskId : null;
+                
+                moveTask(data.projectId, data.taskId, newStatus, afterTaskId);
             } catch(err) {}
         });
     });
 }
 
+function setupProjectDragAndDrop() {
+    const list = document.getElementById('project-list');
+    if (!list) return;
+
+    list.querySelectorAll('.project-item').forEach(item => {
+        item.addEventListener('dragstart', e => {
+            item.classList.add('dragging');
+            e.dataTransfer.setData('text/plain', JSON.stringify({
+                type: 'project',
+                projectId: item.dataset.id
+            }));
+            e.dataTransfer.effectAllowed = 'move';
+            setTimeout(() => item.style.opacity = '0.5', 0);
+        });
+        item.addEventListener('dragend', () => {
+            item.classList.remove('dragging');
+            item.style.opacity = '1';
+        });
+    });
+
+    if (list.dataset.dndSetup) return;
+    list.dataset.dndSetup = 'true';
+
+    list.addEventListener('dragover', e => {
+        const dragging = document.querySelector('.project-item.dragging');
+        if (!dragging) return;
+        e.preventDefault();
+        
+        const afterElement = getDragAfterElement(list, e.clientY, '.project-item');
+        if (afterElement == null) {
+            list.appendChild(dragging);
+        } else {
+            list.insertBefore(dragging, afterElement);
+        }
+    });
+
+    list.addEventListener('drop', e => {
+        const dragging = document.querySelector('.project-item.dragging');
+        if (!dragging) return;
+        e.preventDefault();
+        
+        try {
+            const data = JSON.parse(e.dataTransfer.getData('text/plain'));
+            if (data.type !== 'project') return;
+            
+            const afterElement = getDragAfterElement(list, e.clientY, '.project-item');
+            const afterProjectId = afterElement ? afterElement.dataset.id : null;
+            
+            reorderProject(data.projectId, afterProjectId);
+        } catch(err) {}
+    });
+}
+
+function reorderProject(projectId, afterProjectId) {
+    const pIndex = state.projects.findIndex(p => p.id === projectId);
+    if (pIndex === -1) return;
+    
+    const [project] = state.projects.splice(pIndex, 1);
+    
+    if (afterProjectId) {
+        const afterIndex = state.projects.findIndex(p => p.id === afterProjectId);
+        if (afterIndex !== -1) {
+            state.projects.splice(afterIndex, 0, project);
+        } else {
+            state.projects.push(project);
+        }
+    } else {
+        state.projects.push(project);
+    }
+    
+    save();
+    renderSidebarProjects();
+    if (currentView === 'dashboard') renderDashboard();
+}
+
 // ========== TASK ACTIONS ==========
 
-function moveTask(projectId, taskId, newStatus) {
+function moveTask(projectId, taskId, newStatus, afterTaskId = null) {
     const proj = getProject(projectId);
-    const task = proj?.tasks.find(t => t.id === taskId);
-    if (!task || task.status === newStatus) return;
+    const taskIndex = proj?.tasks.findIndex(t => t.id === taskId);
+    if (taskIndex === undefined || taskIndex === -1) return;
 
+    const task = proj.tasks[taskIndex];
     const oldStatus = task.status;
+
+    const doMove = () => {
+        task.status = newStatus;
+
+        if (newStatus === 'done' && oldStatus !== 'done') {
+            task.completedAt = Date.now();
+            task.subtasks.forEach(s => s.done = true);
+            const xp = 20 * task.priority;
+            addXP(xp);
+            catchPokemon(task.title);
+            showCelebration(xp);
+            fireConfetti(true);
+        } else if (newStatus !== 'done' && oldStatus === 'done') {
+            task.completedAt = null;
+        }
+
+        // Reorder
+        const [removedTask] = proj.tasks.splice(taskIndex, 1);
+
+        if (afterTaskId) {
+            const afterIndex = proj.tasks.findIndex(t => t.id === afterTaskId);
+            if (afterIndex !== -1) {
+                proj.tasks.splice(afterIndex, 0, removedTask);
+            } else {
+                proj.tasks.push(removedTask);
+            }
+        } else {
+            proj.tasks.push(removedTask);
+        }
+
+        save();
+        renderProjectDetail();
+        renderSidebarProjects();
+        updateTopBar();
+    };
 
     if (oldStatus === 'done' && newStatus !== 'done') {
         const xpLost = 20 * task.priority;
         document.getElementById('sad-alert-xp').textContent = xpLost;
         pendingRevert = () => {
-            task.status = newStatus;
-            task.completedAt = null;
             removeXP(xpLost);
             notify(`Lost ${xpLost} XP`, 'punish');
-            save();
-            renderProjectDetail();
-            renderSidebarProjects();
-            updateTopBar();
+            doMove();
         };
         document.getElementById('sad-alert-modal').classList.remove('hidden');
         return;
     }
 
-    task.status = newStatus;
-
-    if (newStatus === 'done' && oldStatus !== 'done') {
-        task.completedAt = Date.now();
-        task.subtasks.forEach(s => s.done = true);
-        const xp = 20 * task.priority;
-        addXP(xp);
-        catchPokemon(task.title);
-        showCelebration(xp);
-        fireConfetti(true);
-    } else if (newStatus !== 'done' && oldStatus === 'done') {
-        task.completedAt = null;
-    }
-
-    save();
-    renderProjectDetail();
-    renderSidebarProjects();
-    updateTopBar();
+    doMove();
 }
 
 window._toggleTaskExpand = (taskId, el) => {
