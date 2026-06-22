@@ -98,6 +98,9 @@
                     </div>
                     <div class="search-filter-bar">
                         <input type="text" id="task-search" class="search-input" placeholder="Search tasks...">
+                        <select id="assignee-filter" class="search-input" style="flex: 0.5; min-width: 140px;">
+                            <option value="all">All Assignees</option>
+                        </select>
                         <div class="filter-btns">
                             <button class="filter-btn active" data-filter="all">All</button>
                             <button class="filter-btn" data-filter="todo">To Do</button>
@@ -193,6 +196,11 @@
                         <label>Deadline</label>
                         <input type="date" id="t-deadline">
                     </div>
+                </div>
+                <div class="form-group">
+                    <label>Assignee <small>(optional)</small></label>
+                    <input type="text" id="t-assignee" list="assignees-list" placeholder="e.g. Ash Ketchum">
+                    <datalist id="assignees-list"></datalist>
                 </div>
                 <div class="form-group">
                     <label>Subtasks <small>(one per line)</small></label>

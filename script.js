@@ -191,6 +191,7 @@ function setupEventListeners() {
 
     // Search & Filter
     document.getElementById('task-search').addEventListener('input', e => { searchQuery = e.target.value.toLowerCase(); renderProjectDetail(); });
+    document.getElementById('assignee-filter').addEventListener('change', renderProjectDetail);
     document.querySelectorAll('.filter-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
@@ -313,12 +314,17 @@ window._openProject = id => {
 function renderDashboard() {
     const active = state.projects.filter(p => p.status === 'active');
     let totalTasks = 0, doneTasks = 0, overdueTasks = 0, inProgressTasks = 0;
-    const now = new Date();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
     active.forEach(p => p.tasks.forEach(t => {
         totalTasks++;
         if (t.status === 'done') doneTasks++;
         else if (t.status === 'in-progress') inProgressTasks++;
-        if (t.deadline && new Date(t.deadline) < now && t.status !== 'done') overdueTasks++;
+        if (t.deadline && t.status !== 'done') {
+            const [y, m, d] = t.deadline.split('-');
+            if (new Date(y, m - 1, d) < today) overdueTasks++;
+        }
     }));
 
     document.getElementById('stats-grid').innerHTML = `
@@ -368,9 +374,33 @@ function renderProjectDetail() {
     if (proj.pokemonId) { iconEl.src = spriteUrl(proj.pokemonId); iconEl.style.display = ''; }
     else iconEl.style.display = 'none';
 
+    const assignees = new Set();
+    proj.tasks.forEach(t => { 
+        if (t.assignee) assignees.add(t.assignee); 
+        t.subtasks.forEach(s => {
+            const matches = s.text.match(/@([a-zA-Z0-9_]+)/g);
+            if (matches) matches.forEach(m => assignees.add(m.substring(1)));
+        });
+    });
+    const assigneeSelect = document.getElementById('assignee-filter');
+    const currentAssignee = assigneeSelect.value;
+    assigneeSelect.innerHTML = `<option value="all">All Assignees</option>` + 
+        Array.from(assignees).sort().map(a => `<option value="${esc(a)}">${esc(a)}</option>`).join('');
+    if (assignees.has(currentAssignee)) assigneeSelect.value = currentAssignee;
+    else assigneeSelect.value = 'all';
+
     let tasks = [...proj.tasks];
     if (searchQuery) tasks = tasks.filter(t => t.title.toLowerCase().includes(searchQuery) || (t.description || '').toLowerCase().includes(searchQuery));
     if (currentFilter !== 'all') tasks = tasks.filter(t => t.status === currentFilter);
+    
+    if (assigneeSelect.value !== 'all') {
+        const sel = assigneeSelect.value.toLowerCase();
+        tasks = tasks.filter(t => {
+            if (t.assignee && t.assignee.toLowerCase() === sel) return true;
+            if (t.subtasks && t.subtasks.some(s => s.text.toLowerCase().includes(sel))) return true;
+            return false;
+        });
+    }
 
     const buckets = { todo: [], 'in-progress': [], done: [] };
     tasks.forEach(t => { if (buckets[t.status]) buckets[t.status].push(t); });
@@ -392,15 +422,20 @@ function renderProjectDetail() {
 }
 
 function renderTaskCard(task, projectId) {
-    const priorityLabels = { 1:'Low', 2:'Med', 3:'Normal', 4:'High', 5:'Critical' };
     let deadlineBadge = '';
     if (task.deadline) {
-        const diff = new Date(task.deadline) - new Date();
+        const [y, m, d] = task.deadline.split('-');
+        const dl = new Date(y, m - 1, d);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const diff = dl - today;
         const isOverdue = diff < 0 && task.status !== 'done';
-        const days = Math.ceil(diff / 86400000);
+        const days = Math.round(diff / 86400000);
         const label = isOverdue ? 'Overdue' : days === 0 ? 'Today' : days === 1 ? 'Tomorrow' : `${days}d`;
         deadlineBadge = `<span class="task-badge deadline ${isOverdue ? 'overdue' : ''}">⏳ ${label}</span>`;
     }
+
+    const assigneeBadge = task.assignee ? `<span class="task-badge" style="background:rgba(59,130,246,0.15);color:var(--info);">👤 ${esc(task.assignee)}</span>` : '';
 
     const stDone = task.subtasks.filter(s => s.done).length;
     const stTotal = task.subtasks.length;
@@ -426,6 +461,7 @@ function renderTaskCard(task, projectId) {
             <div class="task-badges">
                 <span class="task-badge">P${task.priority}</span>
                 ${deadlineBadge}
+                ${assigneeBadge}
             </div>
             <div class="task-actions-compact">
                 <button class="task-action-btn-icon" onclick="window._editTask('${projectId}','${task.id}')" title="Edit">✏️</button>
@@ -884,8 +920,19 @@ function openTaskModal(editTaskId) {
     form.reset();
     document.getElementById('t-id').value = '';
 
+    const proj = getProject();
+    
+    const assignees = new Set();
+    state.projects.forEach(p => p.tasks.forEach(t => { 
+        if (t.assignee) assignees.add(t.assignee); 
+        t.subtasks.forEach(s => {
+            const matches = s.text.match(/@([a-zA-Z0-9_]+)/g);
+            if (matches) matches.forEach(m => assignees.add(m.substring(1)));
+        });
+    }));
+    document.getElementById('assignees-list').innerHTML = Array.from(assignees).sort().map(a => `<option value="${esc(a)}">`).join('');
+
     if (editTaskId) {
-        const proj = getProject();
         const task = proj.tasks.find(t => t.id === editTaskId);
         document.getElementById('task-modal-title').textContent = 'Edit Task';
         document.getElementById('t-id').value = task.id;
@@ -893,6 +940,7 @@ function openTaskModal(editTaskId) {
         document.getElementById('t-desc').value = task.description || '';
         document.getElementById('t-priority').value = task.priority;
         document.getElementById('t-deadline').value = task.deadline || '';
+        document.getElementById('t-assignee').value = task.assignee || '';
         document.getElementById('t-subtasks').value = task.subtasks.map(s => s.text).join('\n');
     } else {
         document.getElementById('task-modal-title').textContent = 'New Task';
@@ -911,6 +959,7 @@ function handleSaveTask(e) {
     const desc = document.getElementById('t-desc').value.trim();
     const priority = parseInt(document.getElementById('t-priority').value);
     const deadline = document.getElementById('t-deadline').value;
+    const assignee = document.getElementById('t-assignee').value.trim();
     const subtaskLines = document.getElementById('t-subtasks').value.split('\n').map(s => s.trim()).filter(Boolean);
 
     if (id) {
@@ -919,6 +968,7 @@ function handleSaveTask(e) {
         task.description = desc;
         task.priority = priority;
         task.deadline = deadline;
+        task.assignee = assignee;
         // Smart merge subtasks
         task.subtasks = subtaskLines.map(text => {
             const existing = task.subtasks.find(s => s.text.toLowerCase() === text.toLowerCase());
@@ -928,7 +978,7 @@ function handleSaveTask(e) {
     } else {
         proj.tasks.push({
             id: genId(), title, description: desc, priority,
-            status: 'todo', deadline, createdAt: Date.now(), completedAt: null,
+            status: 'todo', deadline, assignee, createdAt: Date.now(), completedAt: null,
             subtasks: subtaskLines.map(text => ({ id: genId(), text, done: false }))
         });
         notify('Task created!', 'reward');
