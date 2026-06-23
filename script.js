@@ -654,9 +654,7 @@ function moveTask(projectId, taskId, newStatus) {
             task.subtasks.forEach(s => s.done = true);
             const xp = 20 * task.priority;
             addXP(xp);
-            catchPokemon(task);
-            showCelebration(xp);
-            fireConfetti(true);
+            catchPokemon(task, xp);
         } else if (newStatus !== 'done' && oldStatus === 'done') {
             task.completedAt = null;
         }
@@ -799,7 +797,7 @@ window._toggleSubtask = (pId, tId, sId, checked) => {
 
 // ========== POKEDEX ==========
 
-function showCatchConfetti(id, name) {
+function showCatchConfetti(id, name, xp) {
     if (window.confetti) {
         confetti({ particleCount: 150, spread: 100, origin: { y: 0.6 } });
     }
@@ -817,14 +815,16 @@ function showCatchConfetti(id, name) {
     banner.style.flexDirection = 'column';
     banner.style.animation = 'popIn 0.3s';
     banner.innerHTML = `
-        <h2 style="color: var(--primary); font-size: 2rem; margin-bottom: 20px; text-shadow: 0 0 20px var(--primary); text-align: center;">Gotcha! ${name} was caught!</h2>
+        <h2 style="color: #ffd700; font-size: 2.5rem; margin-bottom: 10px; text-shadow: 0 0 20px rgba(255,215,0,0.8); text-align: center; font-family: var(--font-heading);">TASK CLEARED!</h2>
+        <p style="color: #fff; font-size: 1.5rem; margin-bottom: 20px; text-shadow: 0 0 10px var(--primary); font-family: var(--font-heading);">+${xp || 0} XP</p>
+        <h3 style="color: var(--primary); font-size: 1.5rem; margin-bottom: 20px; text-shadow: 0 0 15px var(--primary); text-align: center;">You caught ${name}!</h3>
         <img src="${spriteUrlStatic(id)}" style="height: 150px; image-rendering: pixelated; margin-bottom: 30px; filter: drop-shadow(0 0 10px rgba(255,255,255,0.5));" alt="${name}">
         <button class="btn btn-primary glow-btn" onclick="this.parentElement.remove()" style="font-size: 1.2rem; padding: 10px 30px;">Awesome!</button>
     `;
     document.body.appendChild(banner);
 }
 
-function catchPokemon(task) {
+function catchPokemon(task, xpEarned = 0) {
     const caughtIds = new Set(state.pokedex.map(p => p.pokemonId));
     
     let targetRarities = [1, 2];
@@ -864,7 +864,7 @@ function catchPokemon(task) {
     task.caughtPokemonInstId = instId;
     save();
 
-    showCatchConfetti(p.id, p.name || p[1]);
+    showCatchConfetti(p.id, p.name || p[1], xpEarned);
 
     if (!inParty && state.pokedex.length === 7) {
         document.getElementById('oak-party-full-modal').classList.remove('hidden');
