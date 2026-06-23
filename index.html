@@ -78,6 +78,8 @@
                 <section id="view-dashboard" class="view active">
                     <h2 class="view-title">Dashboard</h2>
                     <div class="stats-grid" id="stats-grid"></div>
+                    <h3 class="section-title">Active Party</h3>
+                    <div class="pokemon-party" id="pokemon-party"></div>
                     <h3 class="section-title">Project Progress</h3>
                     <div class="projects-overview" id="projects-overview"></div>
                 </section>
@@ -159,6 +161,24 @@
                     <label>Accent Color</label>
                     <div class="color-picker" id="color-picker"></div>
                 </div>
+                <div class="form-group">
+                    <label>Project Character</label>
+                    <select id="p-avatar" class="form-control" style="background: rgba(0,0,0,0.4); border: 1px solid rgba(139,92,246,0.2); border-radius: 4px; padding: 8px; color: #fff;">
+                        <option value="ash">Ash</option>
+                        <option value="misty">Misty</option>
+                        <option value="brock">Brock</option>
+                        <option value="serena">Serena</option>
+                        <option value="gary">Gary</option>
+                        <option value="dawn">Dawn</option>
+                        <option value="tracy">Tracy</option>
+                        <option value="may">May</option>
+                        <option value="max">Max</option>
+                        <option value="paul">Paul</option>
+                        <option value="clemont">Clemont</option>
+                        <option value="lillie">Lillie</option>
+                        <option value="oak">Professor Oak</option>
+                    </select>
+                </div>
                 <div class="form-actions">
                     <button type="button" class="btn btn-secondary" id="btn-cancel-project">Cancel</button>
                     <button type="submit" class="btn btn-primary">Save Project</button>
@@ -227,19 +247,78 @@
         </div>
     </div>
 
-    <!-- Pokémon Detail Popup -->
-    <div id="pokemon-detail-modal" class="modal hidden">
-        <div class="modal-content glass-panel pokemon-detail">
-            <button class="modal-close" id="btn-close-pokemon">✕</button>
-            <img id="pd-sprite" class="pd-sprite" src="" alt="">
-            <h3 id="pd-name"></h3>
-            <p class="pd-task-label">Caught by completing:</p>
-            <p id="pd-task" class="pd-task"></p>
-            <p id="pd-date" class="pd-date"></p>
+    <!-- Pokémon Detail Popup (Kalos Redesign) -->
+    <div id="pokemon-detail-modal" class="modal hidden" style="z-index: 10000; background: rgba(0,0,0,0.9);">
+        <div class="pokemon-detail" style="margin: 0 auto; animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);">
+            <div class="pokedex-header">
+                <div class="pokedex-lens"></div>
+                <button class="modal-close" id="btn-close-pokemon">✕</button>
+            </div>
+            <div class="pd-screen">
+                <img id="pd-sprite" class="pd-sprite" src="" alt="">
+                <h3 id="pd-name"></h3>
+                <div id="pd-types" class="pd-types"></div>
+                
+                <div id="pd-stats" class="pd-stats"></div>
+
+                <p class="pd-task-label">Caught by completing:</p>
+                <p id="pd-task" class="pd-task"></p>
+                <p id="pd-date" class="pd-date"></p>
+                
+                <button id="btn-set-profile" class="btn btn-primary" style="margin-top: 15px; width: 100%; border-radius: 20px; font-weight: bold; background: #fff; color: #e62828;">Set as Buddy</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Professor Oak Onboarding Modal -->
+    <div id="oak-modal" class="modal hidden" style="z-index: 9999; background: rgba(0,0,0,0.85);">
+        <div class="modal-content glass-panel" style="max-width: 600px; border: 2px solid var(--primary); display: flex; align-items: center; gap: 20px;">
+            <img src="./assets/avatars/oak.png" alt="Professor Oak" style="height: 150px; flex-shrink: 0;">
+            <div style="text-align: left; flex-grow: 1;">
+                <h2 style="color: var(--primary);">Hello there! Welcome to the world of Pokémon!</h2>
+                <p style="color: var(--text-muted); margin-bottom: 20px;">My name is Oak! People call me the Pokémon Prof! This world is inhabited by creatures called Pokémon! But first, tell me about yourself!</p>
+                
+                <div id="oak-step-1">
+                    <input type="text" id="oak-trainer-name" class="form-control" placeholder="What is your name?" style="font-size: 1.2rem; margin-bottom: 20px;">
+                    <button class="btn btn-primary" id="btn-oak-next">Next</button>
+                </div>
+                
+                <div id="oak-step-2" class="hidden">
+                    <p style="font-weight: bold; margin-bottom: 15px;">Choose your starter Pokémon!</p>
+                    <div style="display: flex; gap: 15px; margin-bottom: 20px; text-align: center;">
+                        <div class="starter-card" data-pokemon="1" style="cursor: pointer; padding: 10px; border-radius: 10px; background: rgba(255,255,255,0.05); transition: transform 0.2s;">
+                            <img src="./assets/sprites/1.png" alt="Bulbasaur" style="width: 60px; height: 60px;">
+                            <div>Bulbasaur</div>
+                        </div>
+                        <div class="starter-card" data-pokemon="4" style="cursor: pointer; padding: 10px; border-radius: 10px; background: rgba(255,255,255,0.05); transition: transform 0.2s;">
+                            <img src="./assets/sprites/4.png" alt="Charmander" style="width: 60px; height: 60px;">
+                            <div>Charmander</div>
+                        </div>
+                        <div class="starter-card" data-pokemon="7" style="cursor: pointer; padding: 10px; border-radius: 10px; background: rgba(255,255,255,0.05); transition: transform 0.2s;">
+                            <img src="./assets/sprites/7.png" alt="Squirtle" style="width: 60px; height: 60px;">
+                            <div>Squirtle</div>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" id="btn-oak-start" disabled>Begin Journey!</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Professor Oak Party Full Modal -->
+    <div id="oak-party-full-modal" class="modal hidden" style="z-index: 9999; background: rgba(0,0,0,0.85);">
+        <div class="modal-content glass-panel" style="max-width: 600px; border: 2px solid var(--primary); display: flex; align-items: center; gap: 20px;">
+            <img src="./assets/avatars/oak.png" alt="Professor Oak" style="height: 150px; flex-shrink: 0;">
+            <div style="text-align: left; flex-grow: 1;">
+                <h2 style="color: var(--primary);">Excellent work!</h2>
+                <p style="color: var(--text-muted); margin-bottom: 20px;">You've caught your 7th Pokémon! However, a trainer can only carry 6 Pokémon at a time in their party. I'll take good care of this one at my lab! You can swap your party members from the Pokédex anytime you want.</p>
+                <button class="btn btn-primary" onclick="document.getElementById('oak-party-full-modal').classList.add('hidden');">Got it, Thanks!</button>
+            </div>
         </div>
     </div>
 
     <div id="notification-container"></div>
+    <script src="pokemon_data.js"></script>
     <script src="script.js"></script>
 </body>
 </html>

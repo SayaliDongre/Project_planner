@@ -58,10 +58,10 @@ const POKEMON_POOL = [
 ];
 
 function spriteUrl(id) {
-    return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/${id}.gif`;
+    return `./assets/gifs/${id}.gif`;
 }
 function spriteUrlStatic(id) {
-    return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`;
+    return `./assets/gifs/${id}.gif`;
 }
 
 function xpForLevel(level) { return Math.floor(100 * Math.pow(1.15, level)); }
@@ -88,9 +88,12 @@ function genId() { return Math.random().toString(36).substr(2, 9) + Date.now().t
 // ========== STATE ==========
 
 const DEFAULT_STATE = {
-    player: { xp: 0, level: 1, lastBackup: Date.now() },
+    player: { name: '', xp: 0, level: 1, lastBackup: Date.now() },
     projects: [],
-    pokedex: [] // { pokemonIdx, taskTitle, date }
+    pokedex: [], // { instId, pokemonId, taskTitle, sourcePriority, date }
+    oakTutorialDone: false,
+    profilePokemon: null,
+    items: { rare_candy: 0, fire_stone: 0, water_stone: 0, thunder_stone: 0, leaf_stone: 0, moon_stone: 0 }
 };
 
 let state = loadState();
@@ -112,6 +115,21 @@ function loadState() {
         if (old && old.quests) {
             const migrated = JSON.parse(JSON.stringify(DEFAULT_STATE));
             migrated.player = { ...migrated.player, ...old.player };
+            const avatarUrls = {
+                ash: './assets/avatars/ash.png',
+                misty: './assets/avatars/misty.png',
+                brock: './assets/avatars/brock.png',
+                serena: './assets/avatars/serena.png',
+                gary: './assets/avatars/gary.png',
+                dawn: './assets/avatars/dawn.png',
+                tracy: './assets/avatars/tracy.png',
+                may: './assets/avatars/may.png',
+                max: './assets/avatars/max.png',
+                paul: './assets/avatars/paul.png',
+                clemont: './assets/avatars/clemont.png',
+                lillie: './assets/avatars/lillie.png',
+                oak: './assets/avatars/oak.png'
+            };
             const proj = {
                 id: genId(), name: 'Legacy Quests', description: 'Migrated from previous version',
                 color: '#8b5cf6', pokemonId: 25, createdAt: Date.now(), status: 'active', tasks: []
@@ -142,7 +160,11 @@ function save() {
 // ========== INIT ==========
 
 document.addEventListener('DOMContentLoaded', () => {
-    renderAll();
+    if (!state.oakTutorialDone) {
+        startOakTutorial();
+    } else {
+        renderAll();
+    }
     setupEventListeners();
     checkBackupReminder();
 });
@@ -150,23 +172,59 @@ document.addEventListener('DOMContentLoaded', () => {
 function setupEventListeners() {
     // Sidebar nav
     document.querySelectorAll('.nav-item').forEach(btn => {
-        btn.addEventListener('click', () => {
-            switchView(btn.dataset.view);
-            if (window.innerWidth <= 768) {
-                document.getElementById('sidebar').classList.remove('open');
-            }
-        });
+        btn.addEventListener('click', () => switchView(btn.dataset.view));
     });
 
     // Sidebar toggle
-    document.getElementById('sidebar-toggle').addEventListener('click', (e) => {
-        e.stopPropagation();
+    document.getElementById('sidebar-toggle').addEventListener('click', () => {
         document.getElementById('sidebar').classList.toggle('open');
     });
 
     // Close sidebar on main content click (mobile)
     document.querySelector('.main-content').addEventListener('click', () => {
         document.getElementById('sidebar').classList.remove('open');
+    });
+
+    // Oak Tutorial
+    document.getElementById('btn-oak-next').addEventListener('click', () => {
+        const name = document.getElementById('oak-trainer-name').value.trim();
+        if (!name) return;
+        state.player.name = name;
+        document.getElementById('oak-step-1').classList.add('hidden');
+        document.getElementById('oak-step-2').classList.remove('hidden');
+    });
+
+    let selectedStarterId = null;
+    document.querySelectorAll('.starter-card').forEach(card => {
+        card.addEventListener('click', () => {
+            document.querySelectorAll('.starter-card').forEach(c => c.style.transform = 'scale(1)');
+            card.style.transform = 'scale(1.1)';
+            selectedStarterId = parseInt(card.dataset.pokemon);
+            document.getElementById('btn-oak-start').disabled = false;
+        });
+    });
+
+    document.getElementById('btn-oak-start').addEventListener('click', () => {
+        if (!selectedStarterId) return;
+        state.oakTutorialDone = true;
+        const starterInstId = 'pk_' + genId();
+        state.profilePokemon = {
+            instId: starterInstId,
+            pokemonId: selectedStarterId,
+            level: 5,
+            xp: 0
+        };
+        state.pokedex.push({
+            instId: starterInstId,
+            pokemonId: selectedStarterId,
+            taskTitle: "Oak's Gift",
+            sourcePriority: 3,
+            date: Date.now()
+        });
+        save();
+        document.getElementById('oak-modal').classList.add('hidden');
+        renderAll();
+        notify(`You received a Pokémon from Professor Oak!`, 'reward', spriteUrlStatic(selectedStarterId));
     });
 
     // Project CRUD
@@ -191,7 +249,6 @@ function setupEventListeners() {
 
     // Search & Filter
     document.getElementById('task-search').addEventListener('input', e => { searchQuery = e.target.value.toLowerCase(); renderProjectDetail(); });
-    document.getElementById('assignee-filter').addEventListener('change', renderProjectDetail);
     document.querySelectorAll('.filter-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
@@ -224,6 +281,26 @@ function setupEventListeners() {
     document.addEventListener('keydown', e => {
         if (e.key === 'Escape') document.querySelectorAll('.modal').forEach(m => m.classList.add('hidden'));
     });
+
+    const setProfileBtn = document.getElementById('btn-set-profile');
+    if (setProfileBtn) {
+        setProfileBtn.addEventListener('click', () => {
+            const idx = setProfileBtn.dataset.idx;
+            if (idx !== undefined) {
+                const entry = state.pokedex[idx];
+                state.profilePokemon = {
+                    instId: entry.instId,
+                    pokemonId: entry.pokemonId,
+                    level: 5,
+                    xp: 0
+                };
+                save();
+                renderAll();
+                closeModal('pokemon-detail-modal');
+                notify('Buddy updated!', 'info');
+            }
+        });
+    }
 }
 
 // ========== VIEWS ==========
@@ -260,14 +337,19 @@ function renderAll() {
 // ========== TOP BAR ==========
 
 function updateTopBar() {
-    const { level, xp } = state.player;
+    let level = 1, xp = 0, pokeId = 25; // fallback Pikachu
+    if (state.profilePokemon) {
+        level = state.profilePokemon.level || 1;
+        xp = state.profilePokemon.xp || 0;
+        pokeId = state.profilePokemon.pokemonId;
+    }
     const needed = xpForLevel(level);
     document.getElementById('player-level').textContent = level;
     document.getElementById('player-rank').textContent = getRank(level);
     document.getElementById('current-xp').textContent = xp;
     document.getElementById('next-level-xp').textContent = needed;
     document.getElementById('xp-bar').style.width = `${(xp / needed) * 100}%`;
-    document.getElementById('player-avatar').src = spriteUrl(getAvatarPokemon(level));
+    document.getElementById('player-avatar').src = spriteUrl(pokeId);
 
     // Overall progress
     const activeProjects = state.projects.filter(p => p.status === 'active');
@@ -284,6 +366,41 @@ function updateTopBar() {
 
 // ========== SIDEBAR ==========
 
+function renderParty() {
+    const partyEl = document.getElementById('pokemon-party');
+    if (!partyEl) return;
+
+    let party = [];
+    if (state.profilePokemon) party.push(state.profilePokemon);
+    
+    // Fill the rest with pokedex entries (unique pokemonIds)
+    const partyIds = new Set(party.map(p => p.pokemonId));
+    for (const p of state.pokedex) {
+        if (party.length >= 6) break;
+        if (!partyIds.has(p.pokemonId)) {
+            party.push(p);
+            partyIds.add(p.pokemonId);
+        }
+    }
+
+    let html = '';
+    for (let i = 0; i < 6; i++) {
+        if (i < party.length) {
+            const pk = party[i];
+            const isBuddy = (i === 0 && state.profilePokemon && pk.instId === state.profilePokemon.instId);
+            const db = POKEMON_POOL.find(d => d.id === pk.pokemonId);
+            const name = db ? db.name : `Pokémon #${pk.pokemonId}`;
+            html += `<div class="party-slot filled" title="${name}">
+                <img src="${spriteUrlStatic(pk.pokemonId)}" alt="${name}">
+                ${isBuddy ? '<span class="party-badge">Buddy</span>' : ''}
+            </div>`;
+        } else {
+            html += `<div class="party-slot empty" title="Empty Slot"></div>`;
+        }
+    }
+    partyEl.innerHTML = html;
+}
+
 function renderSidebarProjects() {
     const list = document.getElementById('project-list');
     const active = state.projects.filter(p => p.status === 'active');
@@ -293,41 +410,38 @@ function renderSidebarProjects() {
     }
     list.innerHTML = active.map(p => {
         const taskCount = p.tasks.filter(t => t.status !== 'done').length;
-        return `<button class="project-item ${currentProjectId === p.id ? 'active' : ''}" data-id="${p.id}" onclick="window._openProject('${p.id}')" draggable="true">
+        return `<button class="project-item ${currentProjectId === p.id ? 'active' : ''}" data-id="${p.id}" onclick="window._openProject('${p.id}')">
             <span class="project-dot" style="background:${p.color}"></span>
             <span class="project-item-name">${esc(p.name)}</span>
             <span class="project-item-count">${taskCount}</span>
         </button>`;
     }).join('');
-    setupProjectDragAndDrop();
 }
 
-window._openProject = id => {
-    switchView('project', id);
-    if (window.innerWidth <= 768) {
-        document.getElementById('sidebar').classList.remove('open');
-    }
-};
+window._openProject = id => switchView('project', id);
 
 // ========== DASHBOARD ==========
 
 function renderDashboard() {
+    renderParty();
+    const statsGrid = document.getElementById('stats-grid');
     const active = state.projects.filter(p => p.status === 'active');
     let totalTasks = 0, doneTasks = 0, overdueTasks = 0, inProgressTasks = 0;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
+    const now = new Date();
     active.forEach(p => p.tasks.forEach(t => {
         totalTasks++;
         if (t.status === 'done') doneTasks++;
         else if (t.status === 'in-progress') inProgressTasks++;
-        if (t.deadline && t.status !== 'done') {
-            const [y, m, d] = t.deadline.split('-');
-            if (new Date(y, m - 1, d) < today) overdueTasks++;
+        if (t.deadline) {
+            const deadlineDate = new Date(t.deadline);
+            deadlineDate.setHours(0,0,0,0);
+            const today = new Date();
+            today.setHours(0,0,0,0);
+            if (deadlineDate < today && t.status !== 'done') overdueTasks++;
         }
     }));
 
-    document.getElementById('stats-grid').innerHTML = `
+    statsGrid.innerHTML = `
         <div class="stat-card"><div class="stat-value" style="color:var(--primary)">${active.length}</div><div class="stat-label">Active Projects</div></div>
         <div class="stat-card"><div class="stat-value" style="color:var(--info)">${totalTasks - doneTasks}</div><div class="stat-label">Pending Tasks</div></div>
         <div class="stat-card"><div class="stat-value" style="color:var(--success)">${doneTasks}</div><div class="stat-label">Tasks Completed</div></div>
@@ -371,36 +485,34 @@ function renderProjectDetail() {
 
     document.getElementById('project-name').textContent = proj.name;
     const iconEl = document.getElementById('project-pokemon-icon');
-    if (proj.pokemonId) { iconEl.src = spriteUrl(proj.pokemonId); iconEl.style.display = ''; }
-    else iconEl.style.display = 'none';
-
-    const assignees = new Set();
-    proj.tasks.forEach(t => { 
-        if (t.assignee) assignees.add(t.assignee); 
-        t.subtasks.forEach(s => {
-            const matches = s.text.match(/@([a-zA-Z0-9_]+)/g);
-            if (matches) matches.forEach(m => assignees.add(m.substring(1)));
-        });
-    });
-    const assigneeSelect = document.getElementById('assignee-filter');
-    const currentAssignee = assigneeSelect.value;
-    assigneeSelect.innerHTML = `<option value="all">All Assignees</option>` + 
-        Array.from(assignees).sort().map(a => `<option value="${esc(a)}">${esc(a)}</option>`).join('');
-    if (assignees.has(currentAssignee)) assigneeSelect.value = currentAssignee;
-    else assigneeSelect.value = 'all';
+    const avatarUrls = {
+        ash: './assets/avatars/ash.png',
+        misty: './assets/avatars/misty.png',
+        brock: './assets/avatars/brock.png',
+        serena: './assets/avatars/serena.png',
+        gary: './assets/avatars/gary.png',
+        dawn: './assets/avatars/dawn.png',
+        tracy: './assets/avatars/tracy.png',
+        may: './assets/avatars/may.png',
+        max: './assets/avatars/max.png',
+        paul: './assets/avatars/paul.png',
+        clemont: './assets/avatars/clemont.png',
+        lillie: './assets/avatars/lillie.png',
+        oak: './assets/avatars/oak.png'
+    };
+    if (proj.avatar && avatarUrls[proj.avatar]) { 
+        iconEl.src = avatarUrls[proj.avatar]; 
+        iconEl.style.display = ''; 
+    } else if (proj.pokemonId) { 
+        iconEl.src = spriteUrlStatic(proj.pokemonId); 
+        iconEl.style.display = ''; 
+    } else {
+        iconEl.style.display = 'none';
+    }
 
     let tasks = [...proj.tasks];
     if (searchQuery) tasks = tasks.filter(t => t.title.toLowerCase().includes(searchQuery) || (t.description || '').toLowerCase().includes(searchQuery));
     if (currentFilter !== 'all') tasks = tasks.filter(t => t.status === currentFilter);
-    
-    if (assigneeSelect.value !== 'all') {
-        const sel = assigneeSelect.value.toLowerCase();
-        tasks = tasks.filter(t => {
-            if (t.assignee && t.assignee.toLowerCase() === sel) return true;
-            if (t.subtasks && t.subtasks.some(s => s.text.toLowerCase().includes(sel))) return true;
-            return false;
-        });
-    }
 
     const buckets = { todo: [], 'in-progress': [], done: [] };
     tasks.forEach(t => { if (buckets[t.status]) buckets[t.status].push(t); });
@@ -422,20 +534,19 @@ function renderProjectDetail() {
 }
 
 function renderTaskCard(task, projectId) {
+    const priorityLabels = { 1:'Low', 2:'Med', 3:'Normal', 4:'High', 5:'Critical' };
     let deadlineBadge = '';
     if (task.deadline) {
-        const [y, m, d] = task.deadline.split('-');
-        const dl = new Date(y, m - 1, d);
+        const deadlineDate = new Date(task.deadline);
+        deadlineDate.setHours(0,0,0,0);
         const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const diff = dl - today;
-        const isOverdue = diff < 0 && task.status !== 'done';
+        today.setHours(0,0,0,0);
+        const diff = deadlineDate - today;
         const days = Math.round(diff / 86400000);
+        const isOverdue = days < 0 && task.status !== 'done';
         const label = isOverdue ? 'Overdue' : days === 0 ? 'Today' : days === 1 ? 'Tomorrow' : `${days}d`;
         deadlineBadge = `<span class="task-badge deadline ${isOverdue ? 'overdue' : ''}">⏳ ${label}</span>`;
     }
-
-    const assigneeBadge = task.assignee ? `<span class="task-badge" style="background:rgba(59,130,246,0.15);color:var(--info);">👤 ${esc(task.assignee)}</span>` : '';
 
     const stDone = task.subtasks.filter(s => s.done).length;
     const stTotal = task.subtasks.length;
@@ -455,17 +566,21 @@ function renderTaskCard(task, projectId) {
     const hasExpand = task.description || task.subtasks.length;
     const isOpen = expandedTasks.has(task.id) ? 'open' : '';
 
+    // Move buttons
+    const moves = [];
+    if (task.status !== 'done') moves.push(`<button class="task-action-btn move-btn" onclick="window._moveTask('${projectId}','${task.id}','done')">✓ Done</button>`);
+
     return `<div class="task-card priority-${task.priority}" draggable="true" data-task-id="${task.id}" data-project-id="${projectId}">
         <div class="task-card-title" ${hasExpand ? `style="cursor:pointer" onclick="window._toggleTaskExpand('${task.id}', this)"` : ''}>${esc(task.title)}</div>
-        <div class="task-card-meta">
-            <div class="task-badges">
+        <div class="task-card-meta" style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; gap: 4px; align-items: center;">
                 <span class="task-badge">P${task.priority}</span>
                 ${deadlineBadge}
-                ${assigneeBadge}
             </div>
-            <div class="task-actions-compact">
-                <button class="task-action-btn-icon" onclick="window._editTask('${projectId}','${task.id}')" title="Edit">✏️</button>
-                <button class="task-action-btn-icon delete-btn" onclick="window._deleteTask('${projectId}','${task.id}')" title="Delete">🗑️</button>
+            <div class="task-card-actions" style="margin-top: 0; display: flex; gap: 4px;">
+                ${moves.join('')}
+                <button class="task-action-btn" onclick="window._editTask('${projectId}','${task.id}')">✏️</button>
+                <button class="task-action-btn delete-btn" onclick="window._deleteTask('${projectId}','${task.id}')">🗑️</button>
             </div>
         </div>
         ${stBar}
@@ -475,192 +590,55 @@ function renderTaskCard(task, projectId) {
 
 // ========== DRAG AND DROP ==========
 
-function getDragAfterElement(container, y, itemSelector) {
-    const draggableElements = [...container.querySelectorAll(`${itemSelector}:not(.dragging)`)];
-
-    return draggableElements.reduce((closest, child) => {
-        const box = child.getBoundingClientRect();
-        const offset = y - box.top - box.height / 2;
-        if (offset < 0 && offset > closest.offset) {
-            return { offset: offset, element: child };
-        } else {
-            return closest;
-        }
-    }, { offset: Number.NEGATIVE_INFINITY }).element;
-}
-
 function setupDragAndDrop() {
     document.querySelectorAll('.task-card[draggable]').forEach(card => {
         card.addEventListener('dragstart', e => {
             card.classList.add('dragging');
             e.dataTransfer.setData('text/plain', JSON.stringify({
-                type: 'task',
                 taskId: card.dataset.taskId,
                 projectId: card.dataset.projectId
             }));
             e.dataTransfer.effectAllowed = 'move';
-            setTimeout(() => card.style.opacity = '0.5', 0);
         });
-        card.addEventListener('dragend', () => {
-            card.classList.remove('dragging');
-            card.style.opacity = '1';
-        });
+        card.addEventListener('dragend', () => card.classList.remove('dragging'));
     });
 
     document.querySelectorAll('.kanban-column').forEach(col => {
-        if (col.dataset.dndSetup) return;
-        col.dataset.dndSetup = 'true';
-
-        col.addEventListener('dragover', e => {
-            const dragging = document.querySelector('.task-card.dragging');
-            if (!dragging) return;
-            e.preventDefault();
-            e.dataTransfer.dropEffect = 'move';
-            col.classList.add('drag-over');
-            
-            const list = col.querySelector('.task-list');
-            const afterElement = getDragAfterElement(list, e.clientY, '.task-card');
-            if (afterElement == null) {
-                list.appendChild(dragging);
-            } else {
-                list.insertBefore(dragging, afterElement);
-            }
-        });
+        col.addEventListener('dragover', e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; col.classList.add('drag-over'); });
         col.addEventListener('dragleave', () => col.classList.remove('drag-over'));
         col.addEventListener('drop', e => {
-            const dragging = document.querySelector('.task-card.dragging');
-            if (!dragging) return;
             e.preventDefault();
             col.classList.remove('drag-over');
             try {
-                const data = JSON.parse(e.dataTransfer.getData('text/plain'));
-                if (data.type !== 'task') return;
-                
-                const list = col.querySelector('.task-list');
+                const { taskId, projectId } = JSON.parse(e.dataTransfer.getData('text/plain'));
                 const newStatus = col.dataset.status;
-                const afterElement = getDragAfterElement(list, e.clientY, '.task-card');
-                const afterTaskId = afterElement ? afterElement.dataset.taskId : null;
-                
-                moveTask(data.projectId, data.taskId, newStatus, afterTaskId);
+                moveTask(projectId, taskId, newStatus);
             } catch(err) {}
         });
     });
 }
 
-function setupProjectDragAndDrop() {
-    const list = document.getElementById('project-list');
-    if (!list) return;
-
-    list.querySelectorAll('.project-item').forEach(item => {
-        item.addEventListener('dragstart', e => {
-            item.classList.add('dragging');
-            e.dataTransfer.setData('text/plain', JSON.stringify({
-                type: 'project',
-                projectId: item.dataset.id
-            }));
-            e.dataTransfer.effectAllowed = 'move';
-            setTimeout(() => item.style.opacity = '0.5', 0);
-        });
-        item.addEventListener('dragend', () => {
-            item.classList.remove('dragging');
-            item.style.opacity = '1';
-        });
-    });
-
-    if (list.dataset.dndSetup) return;
-    list.dataset.dndSetup = 'true';
-
-    list.addEventListener('dragover', e => {
-        const dragging = document.querySelector('.project-item.dragging');
-        if (!dragging) return;
-        e.preventDefault();
-        
-        const afterElement = getDragAfterElement(list, e.clientY, '.project-item');
-        if (afterElement == null) {
-            list.appendChild(dragging);
-        } else {
-            list.insertBefore(dragging, afterElement);
-        }
-    });
-
-    list.addEventListener('drop', e => {
-        const dragging = document.querySelector('.project-item.dragging');
-        if (!dragging) return;
-        e.preventDefault();
-        
-        try {
-            const data = JSON.parse(e.dataTransfer.getData('text/plain'));
-            if (data.type !== 'project') return;
-            
-            const afterElement = getDragAfterElement(list, e.clientY, '.project-item');
-            const afterProjectId = afterElement ? afterElement.dataset.id : null;
-            
-            reorderProject(data.projectId, afterProjectId);
-        } catch(err) {}
-    });
-}
-
-function reorderProject(projectId, afterProjectId) {
-    const pIndex = state.projects.findIndex(p => p.id === projectId);
-    if (pIndex === -1) return;
-    
-    const [project] = state.projects.splice(pIndex, 1);
-    
-    if (afterProjectId) {
-        const afterIndex = state.projects.findIndex(p => p.id === afterProjectId);
-        if (afterIndex !== -1) {
-            state.projects.splice(afterIndex, 0, project);
-        } else {
-            state.projects.push(project);
-        }
-    } else {
-        state.projects.push(project);
-    }
-    
-    save();
-    renderSidebarProjects();
-    if (currentView === 'dashboard') renderDashboard();
-}
-
 // ========== TASK ACTIONS ==========
 
-function moveTask(projectId, taskId, newStatus, afterTaskId = null) {
+function moveTask(projectId, taskId, newStatus) {
     const proj = getProject(projectId);
-    const taskIndex = proj?.tasks.findIndex(t => t.id === taskId);
-    if (taskIndex === undefined || taskIndex === -1) return;
+    const task = proj?.tasks.find(t => t.id === taskId);
+    if (!task || task.status === newStatus) return;
 
-    const task = proj.tasks[taskIndex];
     const oldStatus = task.status;
-
     const doMove = () => {
         task.status = newStatus;
-
         if (newStatus === 'done' && oldStatus !== 'done') {
             task.completedAt = Date.now();
             task.subtasks.forEach(s => s.done = true);
             const xp = 20 * task.priority;
             addXP(xp);
-            catchPokemon(task.title);
+            catchPokemon(task);
             showCelebration(xp);
             fireConfetti(true);
         } else if (newStatus !== 'done' && oldStatus === 'done') {
             task.completedAt = null;
         }
-
-        // Reorder
-        const [removedTask] = proj.tasks.splice(taskIndex, 1);
-
-        if (afterTaskId) {
-            const afterIndex = proj.tasks.findIndex(t => t.id === afterTaskId);
-            if (afterIndex !== -1) {
-                proj.tasks.splice(afterIndex, 0, removedTask);
-            } else {
-                proj.tasks.push(removedTask);
-            }
-        } else {
-            proj.tasks.push(removedTask);
-        }
-
         save();
         renderProjectDetail();
         renderSidebarProjects();
@@ -673,6 +651,26 @@ function moveTask(projectId, taskId, newStatus, afterTaskId = null) {
         pendingRevert = () => {
             removeXP(xpLost);
             notify(`Lost ${xpLost} XP`, 'punish');
+
+            if (task.caughtPokemonInstId) {
+                const idx = state.pokedex.findIndex(p => p.instId === task.caughtPokemonInstId);
+                if (idx !== -1) {
+                    const removed = state.pokedex.splice(idx, 1)[0];
+                    if (state.profilePokemon && state.profilePokemon.instId === removed.instId) {
+                        const starter = state.pokedex.find(p => p.taskTitle === "Oak's Gift") || state.pokedex[0];
+                        if (starter) {
+                            state.profilePokemon = {
+                                instId: starter.instId, pokemonId: starter.pokemonId, xp: 0, level: 5
+                            };
+                            notify('Buddy lost. Reverted to your starter Pokémon!', 'info');
+                        } else {
+                            state.profilePokemon = null;
+                        }
+                    }
+                }
+                delete task.caughtPokemonInstId;
+            }
+
             doMove();
         };
         document.getElementById('sad-alert-modal').classList.remove('hidden');
@@ -720,6 +718,25 @@ window._toggleSubtask = (pId, tId, sId, checked) => {
             sub.done = false;
             removeXP(xpLost);
             notify(`Lost ${xpLost} XP`, 'punish');
+
+            if (task.caughtPokemonInstId) {
+                const idx = state.pokedex.findIndex(p => p.instId === task.caughtPokemonInstId);
+                if (idx !== -1) {
+                    const removed = state.pokedex.splice(idx, 1)[0];
+                    if (state.profilePokemon && state.profilePokemon.instId === removed.instId) {
+                        const starter = state.pokedex.find(p => p.taskTitle === "Oak's Gift") || state.pokedex[0];
+                        if (starter) {
+                            state.profilePokemon = {
+                                instId: starter.instId, pokemonId: starter.pokemonId, xp: 0, level: 5
+                            };
+                            notify('Buddy lost. Reverted to your starter Pokémon!', 'info');
+                        } else {
+                            state.profilePokemon = null;
+                        }
+                    }
+                }
+                delete task.caughtPokemonInstId;
+            }
             
             const anyDone = task.subtasks.some(s => s.done);
             if (willRevertMainTask) {
@@ -761,28 +778,40 @@ window._toggleSubtask = (pId, tId, sId, checked) => {
 
 // ========== POKEDEX ==========
 
-function catchPokemon(taskTitle) {
-    const caughtIds = new Set(state.pokedex.map(p => p.pokemonIdx));
+function catchPokemon(task) {
+    const caughtIds = new Set(state.pokedex.map(p => p.pokemonId));
     let available = [];
     for (let i = 0; i < POKEMON_POOL.length; i++) {
-        if (!caughtIds.has(i)) available.push(i);
+        if (!caughtIds.has(POKEMON_POOL[i][0])) available.push(POKEMON_POOL[i]);
     }
     // If all caught, allow repeats starting from beginning
     if (!available.length) {
         // Find least-used index
         const counts = {};
-        state.pokedex.forEach(p => { counts[p.pokemonIdx] = (counts[p.pokemonIdx] || 0) + 1; });
+        state.pokedex.forEach(p => { counts[p.pokemonId] = (counts[p.pokemonId] || 0) + 1; });
         let minCount = Infinity;
-        POKEMON_POOL.forEach((_, i) => { if ((counts[i] || 0) < minCount) minCount = counts[i] || 0; });
-        available = POKEMON_POOL.map((_, i) => i).filter(i => (counts[i] || 0) === minCount);
+        POKEMON_POOL.forEach((p) => { if ((counts[p[0]] || 0) < minCount) minCount = counts[p[0]] || 0; });
+        available = POKEMON_POOL.filter(p => (counts[p[0]] || 0) === minCount);
     }
 
-    const idx = available[Math.floor(Math.random() * available.length)];
-    const [pokeId, pokeName] = POKEMON_POOL[idx];
-    state.pokedex.push({ pokemonIdx: idx, taskTitle, date: Date.now() });
+    const p = available[Math.floor(Math.random() * available.length)];
+    
+    const instId = 'pk_' + genId();
+    state.pokedex.push({ 
+        instId,
+        pokemonId: p[0], 
+        taskTitle: task.title, 
+        sourcePriority: task.priority,
+        date: Date.now() 
+    });
+    task.caughtPokemonInstId = instId;
     save();
 
-    notify(`You caught ${pokeName}!`, 'reward', spriteUrlStatic(pokeId));
+    notify(`You caught a ${p[1]}!`, 'reward', spriteUrlStatic(p[0]));
+
+    if (state.pokedex.length === 8) {
+        document.getElementById('oak-party-full-modal').classList.remove('hidden');
+    }
 }
 
 function renderPokedex() {
@@ -795,7 +824,9 @@ function renderPokedex() {
     }
 
     grid.innerHTML = state.pokedex.map((entry, i) => {
-        const [pokeId, pokeName] = POKEMON_POOL[entry.pokemonIdx];
+        const pokeId = entry.pokemonId;
+        const p = POKEMON_POOL.find(x => x[0] === pokeId);
+        const pokeName = p ? p[1] : 'Unknown';
         return `<div class="pokedex-card" onclick="window._showPokemon(${i})">
             <img src="${spriteUrlStatic(pokeId)}" alt="${pokeName}">
             <span>${pokeName}</span>
@@ -806,11 +837,15 @@ function renderPokedex() {
 window._showPokemon = idx => {
     const entry = state.pokedex[idx];
     if (!entry) return;
-    const [pokeId, pokeName] = POKEMON_POOL[entry.pokemonIdx];
+    const pokeId = entry.pokemonId;
+    const p = POKEMON_POOL.find(x => x[0] === pokeId);
+    const pokeName = p ? p[1] : 'Unknown';
     document.getElementById('pd-sprite').src = spriteUrl(pokeId);
     document.getElementById('pd-name').textContent = pokeName;
     document.getElementById('pd-task').textContent = entry.taskTitle;
     document.getElementById('pd-date').textContent = new Date(entry.date).toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' });
+    const btnSetProfile = document.getElementById('btn-set-profile');
+    if (btnSetProfile) btnSetProfile.dataset.idx = idx;
     document.getElementById('pokemon-detail-modal').classList.remove('hidden');
 };
 
@@ -871,10 +906,12 @@ function openProjectModal(editId) {
         document.getElementById('p-id').value = p.id;
         document.getElementById('p-name').value = p.name;
         document.getElementById('p-desc').value = p.description || '';
-        const swatch = picker.querySelector(`[data-color="${p.color}"]`);
+        document.getElementById('p-avatar').value = p.avatar || 'ash';
+        const swatch = picker.querySelector(`.color-swatch[data-color="${p.color}"]`);
         if (swatch) swatch.classList.add('selected');
     } else {
         document.getElementById('project-modal-title').textContent = 'New Project';
+        document.getElementById('p-avatar').value = 'ash';
         picker.querySelector('.color-swatch')?.classList.add('selected');
     }
 
@@ -886,22 +923,17 @@ function handleSaveProject(e) {
     const id = document.getElementById('p-id').value;
     const name = document.getElementById('p-name').value.trim();
     const desc = document.getElementById('p-desc').value.trim();
+    const avatar = document.getElementById('p-avatar').value;
     const selectedColor = document.querySelector('.color-swatch.selected');
     const color = selectedColor ? selectedColor.dataset.color : PROJECT_COLORS[0];
 
     if (id) {
         const p = state.projects.find(pr => pr.id === id);
-        p.name = name; p.description = desc; p.color = color;
+        p.name = name; p.description = desc; p.color = color; p.avatar = avatar;
         notify('Project updated!', 'info');
     } else {
-        // Assign a random pokemon from unused pool
-        const usedPokemonIds = state.projects.map(p => p.pokemonId).filter(Boolean);
-        const starterPool = [25,4,7,1,133,39,54,52,152,155,158,175,403,390,393];
-        const available = starterPool.filter(id => !usedPokemonIds.includes(id));
-        const pokemonId = available.length ? available[Math.floor(Math.random() * available.length)] : starterPool[Math.floor(Math.random() * starterPool.length)];
-
         state.projects.push({
-            id: genId(), name, description: desc, color, pokemonId,
+            id: genId(), name, description: desc, color, avatar,
             createdAt: Date.now(), status: 'active', tasks: []
         });
         notify('Project created!', 'reward');
@@ -945,7 +977,6 @@ function openTaskModal(editTaskId) {
     } else {
         document.getElementById('task-modal-title').textContent = 'New Task';
     }
-
     modal.classList.remove('hidden');
 }
 
@@ -972,7 +1003,7 @@ function handleSaveTask(e) {
         // Smart merge subtasks
         task.subtasks = subtaskLines.map(text => {
             const existing = task.subtasks.find(s => s.text.toLowerCase() === text.toLowerCase());
-            return existing || { id: genId(), text, done: false };
+            return existing ? { ...existing, text } : { id: genId(), text, done: false };
         });
         notify('Task updated!', 'info');
     } else {
@@ -1014,27 +1045,46 @@ function deleteCurrentProject() {
 // ========== GAMIFICATION ==========
 
 function removeXP(amount) {
-    state.player.xp -= amount;
-    while (state.player.xp < 0 && state.player.level > 1) {
-        state.player.level--;
-        state.player.xp += xpForLevel(state.player.level);
+    if (!state.profilePokemon) return;
+    state.profilePokemon.xp -= amount;
+    while (state.profilePokemon.xp < 0 && state.profilePokemon.level > 1) {
+        state.profilePokemon.level--;
+        state.profilePokemon.xp += xpForLevel(state.profilePokemon.level);
     }
-    if (state.player.xp < 0) state.player.xp = 0;
+    if (state.profilePokemon.xp < 0) state.profilePokemon.xp = 0;
     save();
     updateTopBar();
 }
 
 function addXP(amount) {
-    state.player.xp += amount;
-    let needed = xpForLevel(state.player.level);
-    while (state.player.xp >= needed) {
-        state.player.xp -= needed;
-        state.player.level++;
-        needed = xpForLevel(state.player.level);
-        notify(`LEVEL UP! Now Level ${state.player.level} — ${getRank(state.player.level)}`, 'reward',
-            spriteUrlStatic(getAvatarPokemon(state.player.level)));
-        fireConfetti(true);
+    if (!state.profilePokemon) return;
+    state.profilePokemon.xp += amount;
+    let needed = xpForLevel(state.profilePokemon.level);
+    let leveledUp = false;
+    
+    while (state.profilePokemon.xp >= needed) {
+        state.profilePokemon.xp -= needed;
+        state.profilePokemon.level++;
+        needed = xpForLevel(state.profilePokemon.level);
+        leveledUp = true;
     }
+    
+    // Check evolutions
+    if (leveledUp && typeof POKEMON_DB !== 'undefined') {
+        const db = POKEMON_DB.find(p => p.id === state.profilePokemon.pokemonId);
+        if (db && db.evolutions && db.evolutions.length > 0) {
+            const nextEvo = db.evolutions.find(e => state.profilePokemon.level >= e.level);
+            if (nextEvo) {
+                state.profilePokemon.pokemonId = nextEvo.id;
+                notify(`Your Pokémon evolved!`, 'reward', spriteUrlStatic(nextEvo.id));
+                fireConfetti(true);
+            }
+        }
+        notify(`LEVEL UP! Now Level ${state.profilePokemon.level} — ${getRank(state.profilePokemon.level)}`, 'reward',
+            spriteUrlStatic(state.profilePokemon.pokemonId));
+        if (!leveledUp) fireConfetti(true);
+    }
+
     save();
     updateTopBar();
 }
@@ -1042,7 +1092,7 @@ function addXP(amount) {
 function showCelebration(xp) {
     const overlay = document.createElement('div');
     overlay.className = 'celebration-overlay';
-    const pokeId = getAvatarPokemon(state.player.level);
+    const pokeId = state.profilePokemon ? state.profilePokemon.pokemonId : 25;
     overlay.innerHTML = `<img src="${spriteUrl(pokeId)}" alt=""><h2>TASK CLEARED!</h2><p>+${xp} XP</p>`;
     document.body.appendChild(overlay);
     setTimeout(() => { overlay.style.opacity = '0'; overlay.style.transition = 'opacity 0.5s'; setTimeout(() => overlay.remove(), 500); }, 3000);
@@ -1100,12 +1150,187 @@ function importData(e) {
 }
 
 function checkBackupReminder() {
-    if (Date.now() - state.player.lastBackup > 2 * 86400000) {
-        notify('Backup reminder! It\'s been over 2 days.', 'punish');
+    const daysSince = (Date.now() - state.player.lastBackup) / 86400000;
+    if (daysSince > 7) {
+        notify('It has been over 7 days since your last backup! You can export your data in the sidebar.', 'info');
     }
 }
 
 // ========== UTILITIES ==========
+
+function startOakTutorial() {
+    document.getElementById('oak-modal').classList.remove('hidden');
+    document.getElementById('oak-step-1').classList.remove('hidden');
+    document.getElementById('oak-step-2').classList.add('hidden');
+    document.getElementById('oak-trainer-name').value = state.player.name || '';
+}
+
+function calculateProgress(tasks) {
+    if (!tasks || !tasks.length) return 0;
+    let completedWeight = 0;
+    tasks.forEach(t => {
+        if (t.status === 'done') {
+            completedWeight += 1;
+        } else if (t.subtasks && t.subtasks.length > 0) {
+            const subDone = t.subtasks.filter(s => s.done).length;
+            completedWeight += (subDone / t.subtasks.length);
+        } else if (t.status === 'in-progress') {
+            completedWeight += 0.5;
+        }
+    });
+    return Math.round((completedWeight / tasks.length) * 100);
+}
+
+function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+function esc(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+
+// ========== ARCHIVE / DELETE PROJECT ==========
+
+function archiveCurrentProject() {
+    const proj = getProject();
+    if (!proj || !confirm(`Archive "${proj.name}"?`)) return;
+    proj.status = 'archived';
+    save();
+    switchView('dashboard');
+    renderAll();
+    notify('Project archived.', 'info');
+}
+
+function deleteCurrentProject() {
+    if (!confirm('Permanently delete this project and all tasks?')) return;
+    state.projects = state.projects.filter(p => p.id !== currentProjectId);
+    save();
+    switchView('dashboard');
+    renderAll();
+}
+
+// ========== GAMIFICATION ==========
+
+function removeXP(amount) {
+    if (!state.profilePokemon) return;
+    state.profilePokemon.xp -= amount;
+    while (state.profilePokemon.xp < 0 && state.profilePokemon.level > 1) {
+        state.profilePokemon.level--;
+        state.profilePokemon.xp += xpForLevel(state.profilePokemon.level);
+    }
+    if (state.profilePokemon.xp < 0) state.profilePokemon.xp = 0;
+    save();
+    updateTopBar();
+}
+
+function addXP(amount) {
+    if (!state.profilePokemon) return;
+    state.profilePokemon.xp += amount;
+    let needed = xpForLevel(state.profilePokemon.level);
+    let leveledUp = false;
+    
+    while (state.profilePokemon.xp >= needed) {
+        state.profilePokemon.xp -= needed;
+        state.profilePokemon.level++;
+        needed = xpForLevel(state.profilePokemon.level);
+        leveledUp = true;
+    }
+    
+    // Check evolutions
+    if (leveledUp && typeof POKEMON_DB !== 'undefined') {
+        const db = POKEMON_DB.find(p => p.id === state.profilePokemon.pokemonId);
+        if (db && db.evolutions && db.evolutions.length > 0) {
+            const nextEvo = db.evolutions.find(e => state.profilePokemon.level >= e.level);
+            if (nextEvo) {
+                state.profilePokemon.pokemonId = nextEvo.id;
+                notify(`Your Pokémon evolved!`, 'reward', spriteUrlStatic(nextEvo.id));
+                fireConfetti(true);
+            }
+        }
+        notify(`LEVEL UP! Now Level ${state.profilePokemon.level} — ${getRank(state.profilePokemon.level)}`, 'reward',
+            spriteUrlStatic(state.profilePokemon.pokemonId));
+        if (!leveledUp) fireConfetti(true);
+    }
+
+    save();
+    updateTopBar();
+}
+
+function showCelebration(xp) {
+    const overlay = document.createElement('div');
+    overlay.className = 'celebration-overlay';
+    const pokeId = state.profilePokemon ? state.profilePokemon.pokemonId : 25;
+    overlay.innerHTML = `<img src="${spriteUrl(pokeId)}" alt=""><h2>TASK CLEARED!</h2><p>+${xp} XP</p>`;
+    document.body.appendChild(overlay);
+    setTimeout(() => { overlay.style.opacity = '0'; overlay.style.transition = 'opacity 0.5s'; setTimeout(() => overlay.remove(), 500); }, 3000);
+}
+
+function fireConfetti(big) {
+    if (typeof confetti === 'undefined') return;
+    const colors = ['#8b5cf6','#10b981','#f59e0b','#06b6d4','#ec4899'];
+    if (big) {
+        const end = Date.now() + 2000;
+        (function frame() {
+            confetti({ particleCount: 4, angle: 60, spread: 55, origin: { x: 0 }, colors });
+            confetti({ particleCount: 4, angle: 120, spread: 55, origin: { x: 1 }, colors });
+            if (Date.now() < end) requestAnimationFrame(frame);
+        })();
+    } else {
+        confetti({ particleCount: 50, spread: 60, origin: { y: 0.7 }, colors });
+    }
+}
+
+// ========== BACKUP ==========
+
+function exportData() {
+    state.player.lastBackup = Date.now();
+    save();
+    const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `quest_planner_backup_${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    notify('Backup saved!', 'reward');
+}
+
+function importData(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+        try {
+            const data = JSON.parse(ev.target.result);
+            if (data.player && data.projects) {
+                state = data;
+                if (!state.pokedex) state.pokedex = [];
+                save();
+                renderAll();
+                switchView('dashboard');
+                notify('Backup loaded!', 'reward');
+            } else throw new Error('Invalid');
+        } catch { notify('Invalid backup file.', 'punish'); }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+}
+
+function checkBackupReminder() {
+    const daysSince = (Date.now() - state.player.lastBackup) / 86400000;
+    if (daysSince > 7) {
+        notify('It has been over 7 days since your last backup! You can export your data in the sidebar.', 'info');
+    }
+}
+
+// ========== UTILITIES ==========
+
+function startOakTutorial() {
+    document.getElementById('oak-modal').classList.remove('hidden');
+    document.getElementById('oak-step-1').classList.remove('hidden');
+    document.getElementById('oak-step-2').classList.add('hidden');
+    document.getElementById('oak-trainer-name').value = state.player.name || '';
+}
 
 function calculateProgress(tasks) {
     if (!tasks || !tasks.length) return 0;
@@ -1137,6 +1362,7 @@ function notify(message, type = 'info', imgUrl) {
     el.className = `notification ${type}`;
     const icon = imgUrl ? `<img src="${imgUrl}">` : type === 'reward' ? '⭐' : type === 'punish' ? '⚠️' : 'ℹ️';
     el.innerHTML = `${imgUrl ? icon : `<span style="font-size:1.2rem">${icon}</span>`} <div>${message}</div>`;
+    
     container.appendChild(el);
     setTimeout(() => {
         el.style.opacity = '0'; el.style.transform = 'translateX(120%)'; el.style.transition = 'all 0.3s';

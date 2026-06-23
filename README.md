@@ -1,7 +1,7 @@
 <div align="center">
-  <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/25.gif" alt="Pikachu" width="80" />
-  <h1>🎮 Quest Planner</h1>
-  <p><strong>A gamified, Pokémon-themed project management dashboard.</strong></p>
+  <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/showdown/25.gif" alt="Pikachu" width="80" />
+  <h1>🎮 Quest Planner V5: The Ultimate Pokémon Journey!</h1>
+  <p><strong>A fully offline, gamified, Pokémon-themed project management dashboard.</strong></p>
   
   <p>
     <a href="https://sayalidongre.github.io/Project_planner/"><img src="https://img.shields.io/badge/Live-Demo-success?style=for-the-badge&logo=github" alt="Live Demo" /></a>
@@ -13,19 +13,25 @@
 
 ## 🌟 Overview
 
-**Quest Planner** transforms your mundane to-do lists and heavy project management tools into an engaging, gamified experience. Manage multiple projects, track tasks across a Kanban board, and catch Pokémon as you level up! 
+**Quest Planner** transforms your mundane to-do lists and heavy project management tools into an engaging, gamified experience. Manage multiple projects, track tasks across a Kanban board, and build the ultimate Pokémon team as you level up! 
 
-Everything runs locally in your browser with zero backend setup required, ensuring your data is private, fast, and completely under your control.
+Everything runs **completely offline** in your browser with zero backend setup required, ensuring your data is private, fast, and completely under your control! We download all 1,700+ assets straight to your machine so you can catch 'em all, even on an airplane! ✈️
 
 ---
 
-## ✨ Features
+## ✨ Amazing Features
 
-- **📊 Comprehensive Dashboard:** Get a bird's eye view of your productivity with active project tracking, pending tasks, and completion percentages.
+- **🎓 Professor Oak's Intro:** Start your journey right! Pick your very first starter Pokémon directly from Professor Oak.
+- **📈 Comprehensive Dashboard:** Get a bird's eye view of your productivity. Track your active projects, pending tasks, and admire your **Active Party** of 6 Pokémon!
 - **📋 Kanban Board Workflow:** Effortlessly drag and drop tasks between *To Do*, *In Progress*, and *Done* statuses.
-- **⚡ Gamified Progression:** Earn XP for completing subtasks and main tasks. Level up through 30+ custom ranks (from Novice to Omega+) and watch your Avatar evolve alongside you.
-- **🎴 Pokédex Collection System:** Catch a unique Generation 1 Pokémon every time you complete a full task. Try to catch all 151!
-- **🗃️ Local Storage & Backups:** Your data is safely stored in your browser's local storage. Easily export and import JSON backups so you never lose your progress.
+- **⚡ Gamified Progression & Evolutions:** Earn XP for completing subtasks and main tasks. Level up your Buddy Pokémon and watch it **evolve** when it hits its canonical level! 
+- **🎴 Massive Pokédex:** Over **1,000 Pokémon** across all generations available to catch! Complete tasks before their deadline to encounter Legendary Pokémon, but beware...
+- **⚖️ Stakes & Consequences:**
+  - Finish early? Get rare evolution stones!
+  - Finish late? You only catch common (P1) Pokémon.
+  - Miss the deadline by 15 days? **No Pokémon for you!**
+  - **Revert a completed task?** The Pokémon you caught for that task is permanently deleted from your PC!
+- **🗃️ Local Storage & Backups:** Your data is safely stored in your browser's local storage. Easily export and import JSON backups.
 - **🌙 Glassmorphism UI:** A sleek, modern, dark-mode interface with beautiful gradients, subtle micro-animations, and a professional aesthetic.
 
 ---
@@ -36,16 +42,16 @@ Everything runs locally in your browser with zero backend setup required, ensuri
 Visit the live site hosted on GitHub Pages:
 🔗 **[Play Quest Planner](https://sayalidongre.github.io/Project_planner/)**
 
-### Running Locally
-If you prefer to run it locally on your machine:
+### Running Locally (100% Offline)
+If you prefer to run it locally on your machine and ensure it works offline forever:
 1. Clone the repository:
    ```bash
    git clone https://github.com/SayaliDongre/Project_planner.git
    ```
 2. Open the directory and simply double-click `index.html` to open it in any modern web browser.
+3. *Optional:* Run `python download_assets.py` to ensure you have the latest updated sprites.
 
 ---
-
 
 ## 🛠️ Built With
 
@@ -53,7 +59,7 @@ If you prefer to run it locally on your machine:
 - **CSS3:** Modern Glassmorphism design, CSS Grid/Flexbox, Custom Properties, and Keyframe Animations.
 - **Vanilla JavaScript (ES6+):** Complete logic, state management, drag-and-drop API, and DOM manipulation without heavy frameworks.
 - **[Canvas Confetti](https://github.com/catdad/canvas-confetti):** For those satisfying task-completion celebrations!
-- **[PokéAPI Sprites](https://github.com/PokeAPI/sprites):** Providing the beautiful animated and static sprites used in the application.
+- **[PokéAPI Sprites](https://github.com/PokeAPI/sprites):** Providing the beautiful animated Showdown sprites and static HD sprites used in the application.
 
 ---
 

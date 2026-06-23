@@ -397,7 +397,7 @@ h1,h2,h3,h4 { font-family: var(--font-heading); letter-spacing: 0.5px; }
     gap: 12px;
 }
 .project-header-left { display: flex; align-items: center; gap: 10px; }
-.project-icon { width: 28px; height: 28px; image-rendering: pixelated; }
+.project-icon { width: 64px; height: 64px; object-fit: contain; image-rendering: pixelated; animation: floatUpDown 3s ease-in-out infinite; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.5)); margin-right: 10px; }
 .btn-back {
     background: transparent;
     border: 1px solid var(--glass-border);
@@ -601,17 +601,17 @@ h1,h2,h3,h4 { font-family: var(--font-heading); letter-spacing: 0.5px; }
     z-index: 40;
 }
 
-/* Pokédex */
+/* Pokédex Grid */
 .pokedex-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
-    gap: 10px;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 12px;
 }
 .pokedex-card {
     aspect-ratio: 1;
-    border-radius: var(--radius-sm);
-    background: var(--glass-bg);
-    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(255,0,50,0.1) 0%, rgba(100,0,20,0.4) 100%);
+    border: 1px solid rgba(255, 50, 50, 0.4);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -620,23 +620,104 @@ h1,h2,h3,h4 { font-family: var(--font-heading); letter-spacing: 0.5px; }
     transition: all var(--transition);
     padding: 8px;
     gap: 4px;
+    position: relative;
+    overflow: hidden;
 }
-.pokedex-card:hover { transform: translateY(-3px) scale(1.05); box-shadow: 0 6px 20px rgba(139,92,246,0.3); border-color: var(--primary); }
-.pokedex-card img { width: 40px; height: 40px; image-rendering: pixelated; }
-.pokedex-card span { font-size: 9px; color: var(--text-muted); text-align: center; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.pokedex-card::before {
+    content: '';
+    position: absolute; top:0; left:0; right:0; bottom:0;
+    background: url('https://www.transparenttextures.com/patterns/carbon-fibre.png');
+    opacity: 0.2; pointer-events: none;
+}
+.pokedex-card:hover { transform: translateY(-4px) scale(1.05); box-shadow: 0 8px 25px rgba(255,0,50,0.4); border-color: #ff3333; }
+.pokedex-card img { width: 50px; height: 50px; image-rendering: pixelated; z-index: 1; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5)); }
+.pokedex-card span { font-size: 10px; color: #fff; text-align: center; font-weight: 600; white-space: nowrap; z-index: 1; text-transform: uppercase; letter-spacing: 0.5px;}
 
-/* Pokémon Detail Modal */
-.pokemon-detail { text-align: center; max-width: 320px; padding: 30px; }
-.pd-sprite { width: 96px; height: 96px; image-rendering: pixelated; margin-bottom: 12px; filter: drop-shadow(0 0 15px rgba(139,92,246,0.5)); }
-.pokemon-detail h3 { font-size: 1.1rem; margin-bottom: 12px; color: var(--primary-hover); }
-.pd-task-label { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
-.pd-task { font-size: 14px; font-weight: 600; color: var(--text-main); }
-.pd-date { font-size: 11px; color: var(--text-dim); margin-top: 8px; }
+/* Active Party UI */
+.pokemon-party {
+    display: flex; gap: 15px; margin-bottom: 30px; overflow-x: auto; padding: 10px 5px;
+}
+.party-slot {
+    width: 80px; height: 80px; border-radius: 50%;
+    background: rgba(255,255,255,0.05); border: 2px dashed rgba(255,255,255,0.2);
+    display: flex; align-items: center; justify-content: center;
+    position: relative; transition: all 0.3s ease; flex-shrink: 0;
+}
+.party-slot.filled {
+    background: radial-gradient(circle at top left, #444, #111);
+    border: 2px solid #ff3333; box-shadow: 0 4px 15px rgba(255,50,50,0.3);
+}
+.party-slot.filled:hover {
+    transform: translateY(-5px); box-shadow: 0 8px 20px rgba(255,50,50,0.5); border-color: #ff6666;
+}
+.party-slot img { width: 60px; height: 60px; object-fit: contain; image-rendering: pixelated; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5)); }
+.party-slot .party-badge {
+    position: absolute; bottom: -5px; background: #ff3333; color: white;
+    font-size: 9px; font-weight: bold; padding: 2px 6px; border-radius: 10px; text-transform: uppercase;
+}
+
+/* Kalos Pokédex Detail Modal */
+.pokemon-detail { 
+    text-align: center; 
+    width: 380px; 
+    padding: 0; 
+    border-radius: 20px;
+    background: #e62828;
+    border: 4px solid #b31b1b;
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.5), 0 10px 40px rgba(0,0,0,0.8);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+.pokedex-header {
+    background: #b31b1b;
+    padding: 10px;
+    display: flex; justify-content: space-between; align-items: center;
+}
+.pokedex-lens {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, #aae4ff, #0077ff);
+    border: 3px solid #fff; box-shadow: 0 0 10px #0077ff;
+}
+.pd-screen {
+    background: #1a1a1a;
+    margin: 15px;
+    border-radius: 10px;
+    border: 3px solid #333;
+    padding: 20px;
+    position: relative;
+    box-shadow: inset 0 0 15px rgba(0,0,0,0.8);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+.pd-sprite { 
+    width: 120px; 
+    height: 120px; 
+    object-fit: contain;
+    image-rendering: pixelated; 
+    filter: drop-shadow(0 10px 15px rgba(255,255,255,0.2)); 
+    animation: floatUpDown 3s ease-in-out infinite;
+    margin-bottom: 12px;
+}
+@keyframes floatUpDown {
+    0% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+    100% { transform: translateY(0); }
+}
+.pokemon-detail h3 { font-size: 1.5rem; margin: 15px 0 5px; color: #fff; text-transform: uppercase; letter-spacing: 2px; }
+.pd-types { display: flex; justify-content: center; gap: 8px; margin-bottom: 15px; width: 100%; }
+.pd-type { padding: 3px 10px; border-radius: 15px; font-size: 10px; font-weight: bold; text-transform: uppercase; color: #fff; box-shadow: inset 0 -2px 0 rgba(0,0,0,0.2); }
+.pd-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; text-align: left; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; margin-bottom: 15px; }
+.pd-stat { font-size: 11px; color: #aaa; display: flex; justify-content: space-between;}
+.pd-stat strong { color: #fff; }
+.pd-task-label { font-size: 10px; color: #ff9999; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+.pd-task { font-size: 13px; font-weight: 600; color: #fff; background: rgba(0,0,0,0.2); padding: 8px; border-radius: 5px; }
+.pd-date { font-size: 10px; color: #ff9999; margin-top: 8px; }
 .modal-close {
-    position: absolute; top: 12px; right: 12px;
     background: transparent; border: none;
-    color: var(--text-muted); font-size: 16px;
-    cursor: pointer; padding: 4px;
+    color: #fff; font-size: 24px;
+    cursor: pointer; padding: 4px 10px;
 }
 .modal-close:hover { color: var(--text-main); }
 
