@@ -500,11 +500,9 @@ function renderProjectDetail() {
         lillie: './assets/avatars/lillie.png',
         oak: './assets/avatars/oak.png'
     };
-    if (proj.avatar && avatarUrls[proj.avatar]) { 
+    if (!proj.avatar) proj.avatar = 'ash'; // Default to character
+    if (avatarUrls[proj.avatar]) { 
         iconEl.src = avatarUrls[proj.avatar]; 
-        iconEl.style.display = ''; 
-    } else if (proj.pokemonId) { 
-        iconEl.src = spriteUrlStatic(proj.pokemonId); 
         iconEl.style.display = ''; 
     } else {
         iconEl.style.display = 'none';
@@ -566,10 +564,6 @@ function renderTaskCard(task, projectId) {
     const hasExpand = task.description || task.subtasks.length;
     const isOpen = expandedTasks.has(task.id) ? 'open' : '';
 
-    // Move buttons
-    const moves = [];
-    if (task.status !== 'done') moves.push(`<button class="task-action-btn move-btn" onclick="window._moveTask('${projectId}','${task.id}','done')">✓ Done</button>`);
-
     return `<div class="task-card priority-${task.priority}" draggable="true" data-task-id="${task.id}" data-project-id="${projectId}">
         <div class="task-card-title" ${hasExpand ? `style="cursor:pointer" onclick="window._toggleTaskExpand('${task.id}', this)"` : ''}>${esc(task.title)}</div>
         <div class="task-card-meta" style="display: flex; justify-content: space-between; align-items: center;">
@@ -578,9 +572,8 @@ function renderTaskCard(task, projectId) {
                 ${deadlineBadge}
             </div>
             <div class="task-card-actions" style="margin-top: 0; display: flex; gap: 4px;">
-                ${moves.join('')}
-                <button class="task-action-btn" onclick="window._editTask('${projectId}','${task.id}')">✏️</button>
-                <button class="task-action-btn delete-btn" onclick="window._deleteTask('${projectId}','${task.id}')">🗑️</button>
+                <button class="task-action-glass" onclick="window._editTask('${projectId}','${task.id}')">✏️ Edit</button>
+                <button class="task-action-glass delete-btn" onclick="window._deleteTask('${projectId}','${task.id}')">🗑️ Delete</button>
             </div>
         </div>
         ${stBar}

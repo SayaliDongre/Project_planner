@@ -316,6 +316,37 @@ h1,h2,h3,h4 { font-family: var(--font-heading); letter-spacing: 0.5px; }
 .btn-danger:hover { background: rgba(239,68,68,0.25); }
 .glow-btn { box-shadow: 0 0 15px rgba(139,92,246,0.3); }
 
+/* Glassmorphic Task Actions */
+.task-action-glass {
+    font-size: 11px;
+    padding: 4px 8px;
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-muted);
+    border: 1px solid var(--glass-border);
+    cursor: pointer;
+    transition: all var(--transition);
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    font-family: var(--font-body);
+}
+.task-action-glass:hover {
+    color: var(--text-main);
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+.task-action-glass.delete-btn:hover {
+    color: var(--danger);
+    background: rgba(239, 68, 68, 0.15);
+    border-color: rgba(239, 68, 68, 0.3);
+    box-shadow: 0 2px 8px rgba(239,68,68,0.2);
+}
+
 /* Content Area */
 .content-area { padding: 24px; flex: 1; }
 
@@ -659,7 +690,8 @@ h1,h2,h3,h4 { font-family: var(--font-heading); letter-spacing: 0.5px; }
 /* Kalos Pokédex Detail Modal */
 .pokemon-detail { 
     text-align: center; 
-    width: 380px; 
+    width: 90%; 
+    max-width: 380px; 
     padding: 0; 
     border-radius: 20px;
     background: #e62828;
@@ -751,6 +783,13 @@ h1,h2,h3,h4 { font-family: var(--font-heading); letter-spacing: 0.5px; }
     padding: 28px;
     animation: popIn 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     position: relative;
+}
+.oak-modal-body {
+    max-width: 600px;
+    border: 2px solid var(--primary);
+    display: flex;
+    align-items: center;
+    gap: 20px;
 }
 @keyframes popIn { from { transform: scale(0.92); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 .modal-content h2 { margin-bottom: 20px; font-size: 1rem; text-align: center; color: var(--primary-hover); }
@@ -851,4 +890,15 @@ h1,h2,h3,h4 { font-family: var(--font-heading); letter-spacing: 0.5px; }
     .projects-overview { grid-template-columns: 1fr; }
     .project-header { flex-direction: column; align-items: flex-start; }
     .form-row { grid-template-columns: 1fr; }
+}
+@media (max-width: 480px) {
+    .hide-mobile { display: none; }
+    .top-bar-actions .btn { padding: 6px; }
+    .xp-bar-container { width: 80px; }
+    .avatar-container { width: 32px; height: 32px; }
+    .pokemon-detail { width: 95%; }
+    .oak-modal-body { flex-direction: column; text-align: center; }
+    .oak-modal-body img { height: 100px !important; margin-bottom: 10px; }
+    .oak-modal-body > div { text-align: center !important; }
+    .oak-modal-body .starter-card img { width: 45px !important; height: 45px !important; }
 }

@@ -66,8 +66,8 @@
                     <span id="overall-pct">0%</span>
                 </div>
                 <div class="top-bar-actions">
-                    <button class="btn btn-sm btn-secondary" id="btn-export">💾 Backup</button>
-                    <label class="btn btn-sm btn-secondary" for="file-import">📂 Load</label>
+                    <button class="btn btn-sm btn-secondary" id="btn-export">💾 <span class="hide-mobile">Backup</span></button>
+                    <label class="btn btn-sm btn-secondary" for="file-import">📂 <span class="hide-mobile">Load</span></label>
                     <input type="file" id="file-import" accept=".json" style="display:none">
                 </div>
             </header>
@@ -272,7 +272,7 @@
 
     <!-- Professor Oak Onboarding Modal -->
     <div id="oak-modal" class="modal hidden" style="z-index: 9999; background: rgba(0,0,0,0.85);">
-        <div class="modal-content glass-panel" style="max-width: 600px; border: 2px solid var(--primary); display: flex; align-items: center; gap: 20px;">
+        <div class="modal-content glass-panel oak-modal-body">
             <img src="./assets/avatars/oak.png" alt="Professor Oak" style="height: 150px; flex-shrink: 0;">
             <div style="text-align: left; flex-grow: 1;">
                 <h2 style="color: var(--primary);">Hello there! Welcome to the world of Pokémon!</h2>
@@ -307,7 +307,7 @@
 
     <!-- Professor Oak Party Full Modal -->
     <div id="oak-party-full-modal" class="modal hidden" style="z-index: 9999; background: rgba(0,0,0,0.85);">
-        <div class="modal-content glass-panel" style="max-width: 600px; border: 2px solid var(--primary); display: flex; align-items: center; gap: 20px;">
+        <div class="modal-content glass-panel oak-modal-body">
             <img src="./assets/avatars/oak.png" alt="Professor Oak" style="height: 150px; flex-shrink: 0;">
             <div style="text-align: left; flex-grow: 1;">
                 <h2 style="color: var(--primary);">Excellent work!</h2>
