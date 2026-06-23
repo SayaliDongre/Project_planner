@@ -797,7 +797,15 @@ window._toggleSubtask = (pId, tId, sId, checked) => {
 
 // ========== POKEDEX ==========
 
-function showCatchConfetti(id, name, xp) {
+const catchQueue = [];
+let isCatchModalOpen = false;
+
+function processCatchQueue() {
+    if (isCatchModalOpen || catchQueue.length === 0) return;
+    isCatchModalOpen = true;
+    
+    const { id, name, xp } = catchQueue.shift();
+    
     if (window.confetti) {
         confetti({ particleCount: 150, spread: 100, origin: { y: 0.6 } });
     }
@@ -819,9 +827,29 @@ function showCatchConfetti(id, name, xp) {
         <p style="color: #fff; font-size: 1.5rem; margin-bottom: 20px; text-shadow: 0 0 10px var(--primary); font-family: var(--font-heading);">+${xp || 0} XP</p>
         <h3 style="color: var(--primary); font-size: 1.5rem; margin-bottom: 20px; text-shadow: 0 0 15px var(--primary); text-align: center;">You caught ${name}!</h3>
         <img src="${spriteUrlStatic(id)}" style="height: 150px; image-rendering: pixelated; margin-bottom: 30px; filter: drop-shadow(0 0 10px rgba(255,255,255,0.5));" alt="${name}">
-        <button class="btn btn-primary glow-btn" onclick="this.parentElement.remove()" style="font-size: 1.2rem; padding: 10px 30px;">Awesome!</button>
+        <button class="btn btn-primary glow-btn" style="font-size: 1.2rem; padding: 10px 30px;">Awesome!</button>
     `;
+    
+    const btn = banner.querySelector('button');
+    btn.onclick = () => {
+        banner.remove();
+        isCatchModalOpen = false;
+        
+        const oakPending = document.getElementById('oak-party-full-modal').dataset.pending === 'true';
+        if (catchQueue.length === 0 && oakPending) {
+            document.getElementById('oak-party-full-modal').dataset.pending = 'false';
+            document.getElementById('oak-party-full-modal').classList.remove('hidden');
+        } else {
+            processCatchQueue();
+        }
+    };
+    
     document.body.appendChild(banner);
+}
+
+function showCatchConfetti(id, name, xp) {
+    catchQueue.push({ id, name, xp });
+    processCatchQueue();
 }
 
 function catchPokemon(task, xpEarned = 0) {
@@ -867,7 +895,7 @@ function catchPokemon(task, xpEarned = 0) {
     showCatchConfetti(p.id, p.name || p[1], xpEarned);
 
     if (!inParty && state.pokedex.length === 7) {
-        document.getElementById('oak-party-full-modal').classList.remove('hidden');
+        document.getElementById('oak-party-full-modal').dataset.pending = 'true';
     }
 }
 
@@ -897,8 +925,8 @@ function renderPokedex() {
                 if (p) pokeName = p[1];
             }
             const idx = state.pokedex.indexOf(entry);
-            return `<div class="pokedex-card" onclick="window._showPokemon(${idx})">
-                <img src="${spriteUrlStatic(pokeId)}" alt="${pokeName}">
+            return `<div class="pokedex-card" draggable="true" data-idx="${idx}" onclick="window._showPokemon(${idx})">
+                <img src="${spriteUrlStatic(pokeId)}" alt="${pokeName}" draggable="false">
                 <span>${pokeName} <small style="display:block;color:var(--text-dim);font-size:10px;">Lv.${entry.level || 5}</small></span>
             </div>`;
         }).join('');
@@ -906,6 +934,51 @@ function renderPokedex() {
 
     activeGrid.innerHTML = renderGrid(party);
     passiveGrid.innerHTML = renderGrid(box);
+    
+    // Add drag and drop logic
+    document.querySelectorAll('.pokedex-card[draggable]').forEach(card => {
+        card.addEventListener('dragstart', e => {
+            e.dataTransfer.setData('text/plain', card.dataset.idx);
+            e.dataTransfer.effectAllowed = 'move';
+            card.style.opacity = '0.5';
+        });
+        card.addEventListener('dragend', () => card.style.opacity = '1');
+    });
+
+    [activeGrid, passiveGrid].forEach(grid => {
+        grid.addEventListener('dragover', e => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+        });
+        grid.addEventListener('drop', e => {
+            e.preventDefault();
+            const idx = e.dataTransfer.getData('text/plain');
+            if (!idx) return;
+            const entry = state.pokedex[idx];
+            if (!entry) return;
+            
+            const isToActive = grid.id === 'pokedex-grid-active';
+            
+            if (isToActive && !entry.inParty) {
+                const partyCount = state.pokedex.filter(p => p.inParty).length;
+                if (partyCount >= 6) {
+                    notify('Your party is full! Remove a Pokémon first.', 'error');
+                    return;
+                }
+                entry.inParty = true;
+                notify('Added to Party!', 'reward');
+                save();
+                renderAll();
+                renderPokedex();
+            } else if (!isToActive && entry.inParty) {
+                entry.inParty = false;
+                notify('Sent to Professor Oak!', 'info');
+                save();
+                renderAll();
+                renderPokedex();
+            }
+        });
+    });
 }
 
 window._showPokemon = idx => {
