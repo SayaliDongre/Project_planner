@@ -803,6 +803,24 @@ h1,h2,h3,h4 { font-family: var(--font-heading); letter-spacing: 0.5px; }
     border-radius: var(--radius-sm);
     color: var(--text-main);
     font-family: var(--font-body);
+}
+
+select.glass-select {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid var(--glass-border);
+    appearance: none;
+    cursor: pointer;
+    background-image: url('data:image/svg+xml;utf8,<svg fill="white" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/></svg>');
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+}
+select.glass-select option {
+    background: var(--bg-dark);
+    color: var(--text-main);
+}
+.form-group input, .form-group select, .form-group textarea {
     font-size: 13px;
     transition: all var(--transition);
     outline: none;

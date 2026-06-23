@@ -219,7 +219,10 @@ function setupEventListeners() {
             pokemonId: selectedStarterId,
             taskTitle: "Oak's Gift",
             sourcePriority: 3,
-            date: Date.now()
+            date: Date.now(),
+            level: 5,
+            xp: 0,
+            inParty: true
         });
         save();
         document.getElementById('oak-modal').classList.add('hidden');
@@ -291,13 +294,38 @@ function setupEventListeners() {
                 state.profilePokemon = {
                     instId: entry.instId,
                     pokemonId: entry.pokemonId,
-                    level: 5,
-                    xp: 0
+                    level: entry.level || 5,
+                    xp: entry.xp || 0
                 };
                 save();
                 renderAll();
                 closeModal('pokemon-detail-modal');
                 notify('Buddy updated!', 'info');
+            }
+        });
+    }
+
+    const togglePartyBtn = document.getElementById('btn-toggle-party');
+    if (togglePartyBtn) {
+        togglePartyBtn.addEventListener('click', () => {
+            const idx = togglePartyBtn.dataset.idx;
+            if (idx !== undefined) {
+                const entry = state.pokedex[idx];
+                if (entry.inParty) {
+                    entry.inParty = false;
+                    notify('Removed from Party!', 'info');
+                } else {
+                    const partyCount = state.pokedex.filter(p => p.inParty).length;
+                    if (partyCount >= 6) {
+                        notify('Your party is full! Remove a Pokémon first.', 'error');
+                        return;
+                    }
+                    entry.inParty = true;
+                    notify('Added to Party!', 'reward');
+                }
+                save();
+                renderAll();
+                closeModal('pokemon-detail-modal');
             }
         });
     }
@@ -771,74 +799,138 @@ window._toggleSubtask = (pId, tId, sId, checked) => {
 
 // ========== POKEDEX ==========
 
+function showCatchConfetti(id, name) {
+    if (window.confetti) {
+        confetti({ particleCount: 150, spread: 100, origin: { y: 0.6 } });
+    }
+    const banner = document.createElement('div');
+    banner.style.position = 'fixed';
+    banner.style.top = '0';
+    banner.style.left = '0';
+    banner.style.width = '100vw';
+    banner.style.height = '100vh';
+    banner.style.background = 'rgba(0,0,0,0.85)';
+    banner.style.zIndex = '10001';
+    banner.style.display = 'flex';
+    banner.style.alignItems = 'center';
+    banner.style.justifyContent = 'center';
+    banner.style.flexDirection = 'column';
+    banner.style.animation = 'popIn 0.3s';
+    banner.innerHTML = `
+        <h2 style="color: var(--primary); font-size: 2rem; margin-bottom: 20px; text-shadow: 0 0 20px var(--primary); text-align: center;">Gotcha! ${name} was caught!</h2>
+        <img src="${spriteUrlStatic(id)}" style="height: 150px; image-rendering: pixelated; margin-bottom: 30px; filter: drop-shadow(0 0 10px rgba(255,255,255,0.5));" alt="${name}">
+        <button class="btn btn-primary glow-btn" onclick="this.parentElement.remove()" style="font-size: 1.2rem; padding: 10px 30px;">Awesome!</button>
+    `;
+    document.body.appendChild(banner);
+}
+
 function catchPokemon(task) {
     const caughtIds = new Set(state.pokedex.map(p => p.pokemonId));
+    
+    let targetRarities = [1, 2];
+    if (task.priority == 3) targetRarities = [3];
+    else if (task.priority == 4) targetRarities = [4];
+    else if (task.priority == 5) targetRarities = [5];
+
     let available = [];
-    for (let i = 0; i < POKEMON_POOL.length; i++) {
-        if (!caughtIds.has(POKEMON_POOL[i][0])) available.push(POKEMON_POOL[i]);
-    }
-    // If all caught, allow repeats starting from beginning
-    if (!available.length) {
-        // Find least-used index
-        const counts = {};
-        state.pokedex.forEach(p => { counts[p.pokemonId] = (counts[p.pokemonId] || 0) + 1; });
-        let minCount = Infinity;
-        POKEMON_POOL.forEach((p) => { if ((counts[p[0]] || 0) < minCount) minCount = counts[p[0]] || 0; });
-        available = POKEMON_POOL.filter(p => (counts[p[0]] || 0) === minCount);
+    if (typeof POKEMON_DB !== 'undefined') {
+        available = POKEMON_DB.filter(p => targetRarities.includes(p.rarity) && !caughtIds.has(p.id));
+        if (!available.length) available = POKEMON_DB.filter(p => targetRarities.includes(p.rarity));
+        if (!available.length) available = POKEMON_DB;
+    } else {
+        available = POKEMON_POOL.map(p => ({ id: p[0], name: p[1] }));
     }
 
     const p = available[Math.floor(Math.random() * available.length)];
     
     const instId = 'pk_' + genId();
+    let level = 5;
+    if (task.priority == 3) level = 15;
+    if (task.priority == 4) level = 30;
+    if (task.priority == 5) level = 50;
+
+    const inParty = state.pokedex.filter(x => x.inParty).length < 6;
+
     state.pokedex.push({ 
         instId,
-        pokemonId: p[0], 
+        pokemonId: p.id, 
         taskTitle: task.title, 
         sourcePriority: task.priority,
-        date: Date.now() 
+        date: Date.now(),
+        level: level,
+        xp: 0,
+        inParty: inParty
     });
     task.caughtPokemonInstId = instId;
     save();
 
-    notify(`You caught a ${p[1]}!`, 'reward', spriteUrlStatic(p[0]));
+    showCatchConfetti(p.id, p.name || p[1]);
 
-    if (state.pokedex.length === 8) {
+    if (!inParty && state.pokedex.length === 7) {
         document.getElementById('oak-party-full-modal').classList.remove('hidden');
     }
 }
 
 function renderPokedex() {
-    const grid = document.getElementById('pokedex-grid');
-    document.getElementById('pokedex-subtitle').textContent = `${state.pokedex.length} Pokémon caught — Complete tasks to catch more!`;
-
-    if (!state.pokedex.length) {
-        grid.innerHTML = '<div class="empty-state"><p>No Pokémon caught yet. Complete tasks to start your collection!</p></div>';
-        return;
+    const activeGrid = document.getElementById('pokedex-grid-active');
+    const passiveGrid = document.getElementById('pokedex-grid-passive');
+    if (!activeGrid || !passiveGrid) return;
+    
+    if (state.pokedex.length > 0 && state.pokedex.filter(p => p.inParty).length === 0) {
+        state.pokedex.forEach((p, i) => { if (i < 6) p.inParty = true; else p.inParty = false; });
+        save();
     }
 
-    grid.innerHTML = state.pokedex.map((entry, i) => {
-        const pokeId = entry.pokemonId;
-        const p = POKEMON_POOL.find(x => x[0] === pokeId);
-        const pokeName = p ? p[1] : 'Unknown';
-        return `<div class="pokedex-card" onclick="window._showPokemon(${i})">
-            <img src="${spriteUrlStatic(pokeId)}" alt="${pokeName}">
-            <span>${pokeName}</span>
-        </div>`;
-    }).join('');
+    const party = state.pokedex.filter(p => p.inParty);
+    const box = state.pokedex.filter(p => !p.inParty);
+
+    const renderGrid = (list) => {
+        if (!list.length) return `<div class="empty-state"><p>Empty</p></div>`;
+        return list.map((entry) => {
+            const pokeId = entry.pokemonId;
+            let pokeName = 'Unknown';
+            if (typeof POKEMON_DB !== 'undefined') {
+                const p = POKEMON_DB.find(x => x.id === pokeId);
+                if (p) pokeName = p.name;
+            } else {
+                const p = POKEMON_POOL.find(x => x[0] === pokeId);
+                if (p) pokeName = p[1];
+            }
+            const idx = state.pokedex.indexOf(entry);
+            return `<div class="pokedex-card" onclick="window._showPokemon(${idx})">
+                <img src="${spriteUrlStatic(pokeId)}" alt="${pokeName}">
+                <span>${pokeName} <small style="display:block;color:var(--text-dim);font-size:10px;">Lv.${entry.level || 5}</small></span>
+            </div>`;
+        }).join('');
+    };
+
+    activeGrid.innerHTML = renderGrid(party);
+    passiveGrid.innerHTML = renderGrid(box);
 }
 
 window._showPokemon = idx => {
     const entry = state.pokedex[idx];
     if (!entry) return;
     const pokeId = entry.pokemonId;
-    const p = POKEMON_POOL.find(x => x[0] === pokeId);
-    const pokeName = p ? p[1] : 'Unknown';
+    let pokeName = 'Unknown';
+    if (typeof POKEMON_DB !== 'undefined') {
+        const p = POKEMON_DB.find(x => x.id === pokeId);
+        if (p) pokeName = p.name;
+    } else {
+        const p = POKEMON_POOL.find(x => x[0] === pokeId);
+        if (p) pokeName = p[1];
+    }
     document.getElementById('pd-sprite').src = spriteUrl(pokeId);
-    document.getElementById('pd-name').textContent = pokeName;
+    document.getElementById('pd-name').textContent = pokeName + ` (Lv.${entry.level || 5})`;
     document.getElementById('pd-task').textContent = entry.taskTitle;
-    document.getElementById('pd-date').textContent = new Date(entry.date).toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' });
+    document.getElementById('pd-date').textContent = new Date(entry.date).toLocaleDateString('en-GB');
     const btnSetProfile = document.getElementById('btn-set-profile');
     if (btnSetProfile) btnSetProfile.dataset.idx = idx;
+    const btnToggleParty = document.getElementById('btn-toggle-party');
+    if (btnToggleParty) {
+        btnToggleParty.dataset.idx = idx;
+        btnToggleParty.textContent = entry.inParty ? 'Remove from Party' : 'Add to Party';
+    }
     document.getElementById('pokemon-detail-modal').classList.remove('hidden');
 };
 
@@ -1045,6 +1137,15 @@ function removeXP(amount) {
         state.profilePokemon.xp += xpForLevel(state.profilePokemon.level);
     }
     if (state.profilePokemon.xp < 0) state.profilePokemon.xp = 0;
+    
+    // Sync to pokedex
+    const entry = state.pokedex.find(p => p.instId === state.profilePokemon.instId);
+    if (entry) {
+        entry.level = state.profilePokemon.level;
+        entry.xp = state.profilePokemon.xp;
+        entry.pokemonId = state.profilePokemon.pokemonId;
+    }
+
     save();
     updateTopBar();
 }
@@ -1076,6 +1177,14 @@ function addXP(amount) {
         notify(`LEVEL UP! Now Level ${state.profilePokemon.level} — ${getRank(state.profilePokemon.level)}`, 'reward',
             spriteUrlStatic(state.profilePokemon.pokemonId));
         if (!leveledUp) fireConfetti(true);
+    }
+
+    // Sync to pokedex
+    const entry = state.pokedex.find(p => p.instId === state.profilePokemon.instId);
+    if (entry) {
+        entry.level = state.profilePokemon.level;
+        entry.xp = state.profilePokemon.xp;
+        entry.pokemonId = state.profilePokemon.pokemonId;
     }
 
     save();
@@ -1182,172 +1291,6 @@ function esc(str) {
     return div.innerHTML;
 }
 
-// ========== ARCHIVE / DELETE PROJECT ==========
-
-function archiveCurrentProject() {
-    const proj = getProject();
-    if (!proj || !confirm(`Archive "${proj.name}"?`)) return;
-    proj.status = 'archived';
-    save();
-    switchView('dashboard');
-    renderAll();
-    notify('Project archived.', 'info');
-}
-
-function deleteCurrentProject() {
-    if (!confirm('Permanently delete this project and all tasks?')) return;
-    state.projects = state.projects.filter(p => p.id !== currentProjectId);
-    save();
-    switchView('dashboard');
-    renderAll();
-}
-
-// ========== GAMIFICATION ==========
-
-function removeXP(amount) {
-    if (!state.profilePokemon) return;
-    state.profilePokemon.xp -= amount;
-    while (state.profilePokemon.xp < 0 && state.profilePokemon.level > 1) {
-        state.profilePokemon.level--;
-        state.profilePokemon.xp += xpForLevel(state.profilePokemon.level);
-    }
-    if (state.profilePokemon.xp < 0) state.profilePokemon.xp = 0;
-    save();
-    updateTopBar();
-}
-
-function addXP(amount) {
-    if (!state.profilePokemon) return;
-    state.profilePokemon.xp += amount;
-    let needed = xpForLevel(state.profilePokemon.level);
-    let leveledUp = false;
-    
-    while (state.profilePokemon.xp >= needed) {
-        state.profilePokemon.xp -= needed;
-        state.profilePokemon.level++;
-        needed = xpForLevel(state.profilePokemon.level);
-        leveledUp = true;
-    }
-    
-    // Check evolutions
-    if (leveledUp && typeof POKEMON_DB !== 'undefined') {
-        const db = POKEMON_DB.find(p => p.id === state.profilePokemon.pokemonId);
-        if (db && db.evolutions && db.evolutions.length > 0) {
-            const nextEvo = db.evolutions.find(e => state.profilePokemon.level >= e.level);
-            if (nextEvo) {
-                state.profilePokemon.pokemonId = nextEvo.id;
-                notify(`Your Pokémon evolved!`, 'reward', spriteUrlStatic(nextEvo.id));
-                fireConfetti(true);
-            }
-        }
-        notify(`LEVEL UP! Now Level ${state.profilePokemon.level} — ${getRank(state.profilePokemon.level)}`, 'reward',
-            spriteUrlStatic(state.profilePokemon.pokemonId));
-        if (!leveledUp) fireConfetti(true);
-    }
-
-    save();
-    updateTopBar();
-}
-
-function showCelebration(xp) {
-    const overlay = document.createElement('div');
-    overlay.className = 'celebration-overlay';
-    const pokeId = state.profilePokemon ? state.profilePokemon.pokemonId : 25;
-    overlay.innerHTML = `<img src="${spriteUrl(pokeId)}" alt=""><h2>TASK CLEARED!</h2><p>+${xp} XP</p>`;
-    document.body.appendChild(overlay);
-    setTimeout(() => { overlay.style.opacity = '0'; overlay.style.transition = 'opacity 0.5s'; setTimeout(() => overlay.remove(), 500); }, 3000);
-}
-
-function fireConfetti(big) {
-    if (typeof confetti === 'undefined') return;
-    const colors = ['#8b5cf6','#10b981','#f59e0b','#06b6d4','#ec4899'];
-    if (big) {
-        const end = Date.now() + 2000;
-        (function frame() {
-            confetti({ particleCount: 4, angle: 60, spread: 55, origin: { x: 0 }, colors });
-            confetti({ particleCount: 4, angle: 120, spread: 55, origin: { x: 1 }, colors });
-            if (Date.now() < end) requestAnimationFrame(frame);
-        })();
-    } else {
-        confetti({ particleCount: 50, spread: 60, origin: { y: 0.7 }, colors });
-    }
-}
-
-// ========== BACKUP ==========
-
-function exportData() {
-    state.player.lastBackup = Date.now();
-    save();
-    const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `quest_planner_backup_${new Date().toISOString().split('T')[0]}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    notify('Backup saved!', 'reward');
-}
-
-function importData(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = ev => {
-        try {
-            const data = JSON.parse(ev.target.result);
-            if (data.player && data.projects) {
-                state = data;
-                if (!state.pokedex) state.pokedex = [];
-                save();
-                renderAll();
-                switchView('dashboard');
-                notify('Backup loaded!', 'reward');
-            } else throw new Error('Invalid');
-        } catch { notify('Invalid backup file.', 'punish'); }
-    };
-    reader.readAsText(file);
-    e.target.value = '';
-}
-
-function checkBackupReminder() {
-    const daysSince = (Date.now() - state.player.lastBackup) / 86400000;
-    if (daysSince > 7) {
-        notify('It has been over 7 days since your last backup! You can export your data in the sidebar.', 'info');
-    }
-}
-
-// ========== UTILITIES ==========
-
-function startOakTutorial() {
-    document.getElementById('oak-modal').classList.remove('hidden');
-    document.getElementById('oak-step-1').classList.remove('hidden');
-    document.getElementById('oak-step-2').classList.add('hidden');
-    document.getElementById('oak-trainer-name').value = state.player.name || '';
-}
-
-function calculateProgress(tasks) {
-    if (!tasks || !tasks.length) return 0;
-    let completedWeight = 0;
-    tasks.forEach(t => {
-        if (t.status === 'done') {
-            completedWeight += 1;
-        } else if (t.subtasks && t.subtasks.length > 0) {
-            const subDone = t.subtasks.filter(s => s.done).length;
-            completedWeight += (subDone / t.subtasks.length);
-        } else if (t.status === 'in-progress') {
-            completedWeight += 0.5;
-        }
-    });
-    return Math.round((completedWeight / tasks.length) * 100);
-}
-
-function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
-
-function esc(str) {
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
-}
 
 function notify(message, type = 'info', imgUrl) {
     const container = document.getElementById('notification-container');

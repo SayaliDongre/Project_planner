@@ -131,7 +131,10 @@
                 <section id="view-pokedex" class="view">
                     <h2 class="view-title">Pokédex — Your Collection</h2>
                     <p class="view-subtitle" id="pokedex-subtitle">Complete tasks to catch Pokémon!</p>
-                    <div class="pokedex-grid" id="pokedex-grid"></div>
+                    <h3 style="color:var(--primary); margin-top:20px; margin-bottom: 15px;">Your Party (Active)</h3>
+                    <div class="pokedex-grid" id="pokedex-grid-active" style="margin-bottom: 30px;"></div>
+                    <h3 style="color:var(--text-muted); margin-bottom: 15px;">Professor Oak's Lab (Passive)</h3>
+                    <div class="pokedex-grid" id="pokedex-grid-passive"></div>
                 </section>
 
                 <!-- Archived View -->
@@ -204,12 +207,12 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label>Priority</label>
-                        <select id="t-priority">
-                            <option value="1">Low</option>
-                            <option value="2">Medium</option>
-                            <option value="3" selected>Normal</option>
-                            <option value="4">High</option>
-                            <option value="5">Critical</option>
+                        <select id="t-priority" class="glass-select">
+                            <option value="1">P1 - Low (Common Pokémon)</option>
+                            <option value="2">P2 - Med (Uncommon Pokémon)</option>
+                            <option value="3" selected>P3 - Normal (Rare Pokémon)</option>
+                            <option value="4">P4 - High (Epic Pokémon)</option>
+                            <option value="5">P5 - Critical (Legendary Pokémon)</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -266,6 +269,7 @@
                 <p id="pd-date" class="pd-date"></p>
                 
                 <button id="btn-set-profile" class="btn btn-primary" style="margin-top: 15px; width: 100%; border-radius: 20px; font-weight: bold; background: #fff; color: #e62828;">Set as Buddy</button>
+                <button id="btn-toggle-party" class="btn btn-secondary" style="margin-top: 10px; width: 100%; border-radius: 20px; font-weight: bold; color: #fff; background: rgba(255,255,255,0.2);">Toggle Party</button>
             </div>
         </div>
     </div>
